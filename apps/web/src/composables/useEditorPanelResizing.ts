@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { ResizablePanel } from '@/components/ui/resizable'
+import type { EditorViewMode } from '@/stores/ui'
 
-type ViewMode = 'edit' | 'split' | 'preview'
 type ResizablePanelInstance = InstanceType<typeof ResizablePanel>
 
 interface UseEditorPanelResizingOptions {
@@ -9,7 +9,7 @@ interface UseEditorPanelResizingOptions {
   isOpenPostSlider: Ref<boolean>
   isOpenRightSlider: Ref<boolean>
   isShowCssEditor: Ref<boolean>
-  viewMode: Ref<ViewMode>
+  viewMode: Ref<EditorViewMode>
 }
 
 export function useEditorPanelResizing({

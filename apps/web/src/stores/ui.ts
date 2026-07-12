@@ -1,6 +1,9 @@
 import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
 
+export type EditorViewMode = 'edit' | 'split' | 'preview'
+export type PreviewDevice = 'desktop' | 'mobile'
+
 /**
  * UI 状态 Store
  * 负责管理全局 UI 状态，包括深色模式、侧边栏、对话框等
@@ -31,16 +34,16 @@ export const useUIStore = defineStore(`ui`, () => {
   const isMobile = store.reactive(`isMobile`, false)
 
   // 视图模式：edit（纯编辑）| split（双屏）| preview（纯预览）
-  const viewMode = store.reactive<'edit' | 'split' | 'preview'>(`viewMode`, `split`)
+  const viewMode = store.reactive<EditorViewMode>(`viewMode`, `split`)
 
-  function setViewMode(mode: 'edit' | 'split' | 'preview') {
+  function setViewMode(mode: EditorViewMode) {
     viewMode.value = mode
   }
 
   // 预览设备：desktop（电脑端）| mobile（移动端模拟）
-  const previewDevice = store.reactive<'desktop' | 'mobile'>(`previewDevice`, `mobile`)
+  const previewDevice = store.reactive<PreviewDevice>(`previewDevice`, `mobile`)
 
-  function setPreviewDevice(device: 'desktop' | 'mobile') {
+  function setPreviewDevice(device: PreviewDevice) {
     previewDevice.value = device
   }
 
