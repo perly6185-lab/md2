@@ -22,6 +22,7 @@ import {
 } from '../extensions'
 import { escapeHtml } from '../utils/basicHelpers'
 import { COMMON_LANGUAGES, highlightAndFormatCode } from '../utils/languages'
+import { createFootnoteRegistry } from './footnotes'
 
 Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
   hljs.registerLanguage(name, lang)
@@ -51,16 +52,6 @@ const ADDITION_STYLE = `
       }
     </style>
   `
-
-function buildFootnoteArray(footnotes: [number, string, string][]): string {
-  return footnotes
-    .map(([index, title, link]) =>
-      link === title
-        ? `<code style="font-size: 90%; opacity: 0.6;">[${index}]</code>: <i style="word-break: break-all">${title}</i><br/>`
-        : `<code style="font-size: 90%; opacity: 0.6;">[${index}]</code> ${title}: <i style="word-break: break-all">${link}</i><br/>`,
-    )
-    .join(`\n`)
-}
 
 function extractFileName(href: string): string {
   try {
@@ -195,8 +186,7 @@ function parseFrontMatterAndContent(markdownText: string): ParseResult {
 }
 
 export function initRenderer(opts: IOpts = {}): RendererAPI {
-  const footnotes: [number, string, string][] = []
-  let footnoteIndex: number = 0
+  const footnotes = createFootnoteRegistry()
   const listOrderedStack: boolean[] = []
   const listCounters: number[] = []
   const markdownParser = new Marked()
@@ -224,21 +214,8 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     return `<${tag} class="${className}"${headingAttr}${styleAttr}>${content}</${tag}>`
   }
 
-  function addFootnote(title: string, link: string): number {
-    // 检查是否已经存在相同的链接
-    const existingFootnote = footnotes.find(([, , existingLink]) => existingLink === link)
-    if (existingFootnote) {
-      return existingFootnote[0] // 返回已存在的脚注索引
-    }
-
-    // 如果不存在，创建新的脚注
-    footnotes.push([++footnoteIndex, title, link])
-    return footnoteIndex
-  }
-
   function reset(newOpts: Partial<IOpts>): void {
-    footnotes.length = 0
-    footnoteIndex = 0
+    footnotes.reset()
     listOrderedStack.length = 0
     listCounters.length = 0
     setOptions(newOpts)
@@ -263,14 +240,7 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
   }
 
   const buildFootnotes = () => {
-    if (!footnotes.length) {
-      return ``
-    }
-
-    return (
-      styledContent(`h4`, `引用链接`)
-      + styledContent(`footnotes`, buildFootnoteArray(footnotes), `p`)
-    )
+    return footnotes.build(styledContent)
   }
 
   const renderer: RendererObject = {
@@ -396,7 +366,7 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
         return parsedText
       }
       if (opts.citeStatus) {
-        const ref = addFootnote(title || text, href)
+        const ref = footnotes.add(title || text, href)
         return `<a href="${href}" title="${title || text}">${parsedText}<sup>[${ref}]</sup></a>`
       }
       return `<a href="${href}" title="${title || text}">${parsedText}</a>`
