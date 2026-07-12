@@ -71,6 +71,33 @@ describe('initRenderer', () => {
     expect(html).toContain(`<figcaption class="figcaption">flow-chart</figcaption>`)
   })
 
+  it('renders cited links as reusable footnote references', () => {
+    const renderer = initRenderer({ citeStatus: true })
+    const { html, readingTime } = renderMarkdown(
+      `[Doocs](https://doocs.org "Doocs Site") and [Again](https://doocs.org)`,
+      renderer,
+    )
+    const output = postProcessHtml(html, readingTime, renderer)
+
+    expect(html.match(/<sup>\[1\]<\/sup>/g)).toHaveLength(2)
+    expect(output).toContain(`引用链接`)
+    expect(output).toContain(`Doocs Site`)
+    expect(output).toContain(`https://doocs.org`)
+  })
+
+  it('does not convert WeChat article links into citations', () => {
+    const renderer = initRenderer({ citeStatus: true })
+    const { html, readingTime } = renderMarkdown(
+      `[Article](https://mp.weixin.qq.com/s/example)`,
+      renderer,
+    )
+    const output = postProcessHtml(html, readingTime, renderer)
+
+    expect(html).toContain(`<a href="https://mp.weixin.qq.com/s/example"`)
+    expect(html).not.toContain(`<sup>`)
+    expect(output).not.toContain(`引用链接`)
+  })
+
   it('renders single-line block formula as katex-block without paragraph wrapper', () => {
     const renderer = initRenderer({})
     const formula = `$$ITE_{i}=Y_{i,1}-Y_{i,0} \\tag{1}$$`

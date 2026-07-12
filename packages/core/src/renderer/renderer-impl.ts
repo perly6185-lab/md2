@@ -26,6 +26,7 @@ import { renderCodeBlock } from './codeBlocks'
 import { createFootnoteRegistry } from './footnotes'
 import { styledContent } from './html'
 import { renderImage } from './images'
+import { renderLink } from './links'
 import { createListState } from './lists'
 
 Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
@@ -35,7 +36,6 @@ Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
 export { hljs }
 
 const PARAGRAPH_WRAPPER_REGEX = /^<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/
-const MP_WEIXIN_LINK_REGEX = /^https?:\/\/mp\.weixin\.qq\.com/
 
 const ADDITION_STYLE = `
     <style>
@@ -219,17 +219,14 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
 
     link({ href, title, text, tokens }: Tokens.Link): string {
       const parsedText = this.parser.parseInline(tokens)
-      if (MP_WEIXIN_LINK_REGEX.test(href)) {
-        return `<a href="${href}" title="${title || text}">${parsedText}</a>`
-      }
-      if (href === text) {
-        return parsedText
-      }
-      if (opts.citeStatus) {
-        const ref = footnotes.add(title || text, href)
-        return `<a href="${href}" title="${title || text}">${parsedText}<sup>[${ref}]</sup></a>`
-      }
-      return `<a href="${href}" title="${title || text}">${parsedText}</a>`
+      return renderLink({
+        citeStatus: opts.citeStatus,
+        footnotes,
+        href,
+        parsedText,
+        text,
+        title,
+      })
     },
 
     strong({ tokens }: Tokens.Strong): string {
