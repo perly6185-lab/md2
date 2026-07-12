@@ -33,6 +33,24 @@ export interface RenderMarkdownInput {
   customCSS?: string
 }
 
+interface ResolvedRenderOptions {
+  theme: ThemeName
+  primaryColor: string
+  fontFamily: string
+  fontSize: string
+  legend: LegendValue
+  isMacCodeBlock: boolean
+  isShowLineNumber: boolean
+  citeStatus: boolean
+  countStatus: boolean
+  themeMode: 'light' | 'dark'
+  isUseIndent: boolean
+  isUseJustify: boolean
+  headingStyles?: HeadingStyles
+  codeBlockTheme: string
+  customCSS: string
+}
+
 const themeDir = path.resolve(import.meta.dirname, `../../shared/src/configs/theme-css`)
 
 function escapeStyleContent(css: string): string {
@@ -109,22 +127,36 @@ function normalizeHeadingStyles(input?: HeadingStylesInput): HeadingStyles | und
   return Object.keys(normalized).length > 0 ? normalized : undefined
 }
 
-export async function buildRenderedOutput(input: RenderMarkdownInput) {
-  const theme = input.theme ?? defaultRenderOptions.theme
-  const primaryColor = input.primaryColor ?? defaultRenderOptions.primaryColor
-  const fontFamily = input.fontFamily ?? defaultRenderOptions.fontFamily
-  const fontSize = input.fontSize ?? defaultRenderOptions.fontSize
-  const legend = input.legend ?? defaultRenderOptions.legend
-  const codeBlockTheme = input.codeBlockTheme ?? defaultRenderOptions.codeBlockTheme
-  const headingStyles = normalizeHeadingStyles(input.headingStyles)
-
-  const renderer = initRenderer({
+function resolveRenderOptions(input: RenderMarkdownInput): ResolvedRenderOptions {
+  return {
+    theme: input.theme ?? defaultRenderOptions.theme,
+    primaryColor: input.primaryColor ?? defaultRenderOptions.primaryColor,
+    fontFamily: input.fontFamily ?? defaultRenderOptions.fontFamily,
+    fontSize: input.fontSize ?? defaultRenderOptions.fontSize,
+    legend: input.legend ?? defaultRenderOptions.legend,
     isMacCodeBlock: input.isMacCodeBlock ?? defaultRenderOptions.isMacCodeBlock,
     isShowLineNumber: input.isShowLineNumber ?? defaultRenderOptions.isShowLineNumber,
     citeStatus: input.citeStatus ?? defaultRenderOptions.citeStatus,
     countStatus: input.countStatus ?? defaultRenderOptions.countStatus,
     themeMode: input.themeMode ?? defaultRenderOptions.themeMode,
-    legend,
+    isUseIndent: input.isUseIndent ?? defaultRenderOptions.isUseIndent,
+    isUseJustify: input.isUseJustify ?? defaultRenderOptions.isUseJustify,
+    headingStyles: normalizeHeadingStyles(input.headingStyles),
+    codeBlockTheme: input.codeBlockTheme ?? defaultRenderOptions.codeBlockTheme,
+    customCSS: escapeStyleContent(input.customCSS?.trim() ?? ``),
+  }
+}
+
+export async function buildRenderedOutput(input: RenderMarkdownInput) {
+  const options = resolveRenderOptions(input)
+
+  const renderer = initRenderer({
+    isMacCodeBlock: options.isMacCodeBlock,
+    isShowLineNumber: options.isShowLineNumber,
+    citeStatus: options.citeStatus,
+    countStatus: options.countStatus,
+    themeMode: options.themeMode,
+    legend: options.legend,
   })
 
   const { html: baseHtml, readingTime } = renderMarkdown(input.markdown, renderer)
@@ -132,19 +164,18 @@ export async function buildRenderedOutput(input: RenderMarkdownInput) {
   const { yamlData } = renderer.parseFrontMatterAndContent(input.markdown)
 
   const cssConfig = {
-    primaryColor,
-    fontFamily,
-    fontSize,
-    isUseIndent: input.isUseIndent ?? defaultRenderOptions.isUseIndent,
-    isUseJustify: input.isUseJustify ?? defaultRenderOptions.isUseJustify,
-    headingStyles,
+    primaryColor: options.primaryColor,
+    fontFamily: options.fontFamily,
+    fontSize: options.fontSize,
+    isUseIndent: options.isUseIndent,
+    isUseJustify: options.isUseJustify,
+    headingStyles: options.headingStyles,
   }
 
   const variablesCSS = generateCSSVariables(cssConfig)
   const headingStylesCSS = generateHeadingStyles(cssConfig)
-  const themeCSS = resolveThemeCSS(theme)
-  const hljsCSS = codeBlockTheme ? await fetchCodeBlockCSS(codeBlockTheme) : ``
-  const customCSS = escapeStyleContent(input.customCSS?.trim() ?? ``)
+  const themeCSS = resolveThemeCSS(options.theme)
+  const hljsCSS = options.codeBlockTheme ? await fetchCodeBlockCSS(options.codeBlockTheme) : ``
 
   const mergedCSS = buildMergedCSS([
     variablesCSS,
@@ -152,7 +183,7 @@ export async function buildRenderedOutput(input: RenderMarkdownInput) {
     themeCSS,
     headingStylesCSS,
     hljsCSS,
-    customCSS,
+    options.customCSS,
   ])
 
   const html = `<style>\n${mergedCSS}\n</style>\n${processedHtml}`
