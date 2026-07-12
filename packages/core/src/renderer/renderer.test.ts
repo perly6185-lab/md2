@@ -47,6 +47,30 @@ describe('initRenderer', () => {
     expect(output).toContain(`Hi`)
   })
 
+  it('renders image dimensions and alt legend', () => {
+    const renderer = initRenderer({ legend: `alt` })
+    const { html } = renderMarkdown(
+      `![Diagram|320x180](https://example.com/assets/flow.png "Flow title")`,
+      renderer,
+    )
+
+    expect(html).toContain(`<figure>`)
+    expect(html).toContain(`width="320"`)
+    expect(html).toContain(`height="180"`)
+    expect(html).toContain(`alt="Diagram"`)
+    expect(html).toContain(`<figcaption class="figcaption">Diagram</figcaption>`)
+  })
+
+  it('renders filename image legend without extension or URL suffixes', () => {
+    const renderer = initRenderer({ legend: `filename` })
+    const { html } = renderMarkdown(
+      `![Alt](https://cdn.example.com/path/flow-chart.png?x=1#top)`,
+      renderer,
+    )
+
+    expect(html).toContain(`<figcaption class="figcaption">flow-chart</figcaption>`)
+  })
+
   it('renders single-line block formula as katex-block without paragraph wrapper', () => {
     const renderer = initRenderer({})
     const formula = `$$ITE_{i}=Y_{i,1}-Y_{i,0} \\tag{1}$$`

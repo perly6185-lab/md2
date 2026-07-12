@@ -24,6 +24,8 @@ import { escapeHtml } from '../utils/basicHelpers'
 import { COMMON_LANGUAGES } from '../utils/languages'
 import { renderCodeBlock } from './codeBlocks'
 import { createFootnoteRegistry } from './footnotes'
+import { styledContent } from './html'
+import { renderImage } from './images'
 import { createListState } from './lists'
 
 Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
@@ -32,8 +34,6 @@ Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
 
 export { hljs }
 
-const UNDERSCORE_REGEX = /_/g
-const HEADING_TAG_REGEX = /^h\d$/
 const PARAGRAPH_WRAPPER_REGEX = /^<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/
 const MP_WEIXIN_LINK_REGEX = /^https?:\/\/mp\.weixin\.qq\.com/
 
@@ -53,40 +53,6 @@ const ADDITION_STYLE = `
       }
     </style>
   `
-
-function extractFileName(href: string): string {
-  try {
-    // 移除查询参数和哈希
-    const urlPath = href.split('?')[0].split('#')[0]
-    // 获取最后一个 / 之后的部分
-    const fileName = urlPath.split('/').pop() || ''
-    // 移除文件扩展名
-    const nameWithoutExt = fileName.replace(/\.[^.]*$/, '')
-    return nameWithoutExt
-  }
-  catch {
-    return ''
-  }
-}
-
-function transform(legend: string, text: string | null, title: string | null, href: string = ''): string {
-  const options = legend.split(`-`)
-  for (const option of options) {
-    if (option === `alt` && text) {
-      return text
-    }
-    if (option === `title` && title) {
-      return title
-    }
-    if (option === `filename` && href) {
-      const fileName = extractFileName(href)
-      if (fileName) {
-        return escapeHtml(fileName)
-      }
-    }
-  }
-  return ``
-}
 
 function isStandaloneKatexBlock(html: string): boolean {
   return /^<section class="katex-block"[\s\S]*<\/section>\s*$/.test(html.trim())
@@ -133,21 +99,6 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
 
   function getOpts(): IOpts {
     return opts
-  }
-
-  /**
-   * 生成带 CSS 类的内容（新主题系统）
-   * @param styleLabel CSS 类名标识
-   * @param content 内容
-   * @param tagName HTML 标签名（可选）
-   * @param style 内联样式（可选）
-   */
-  function styledContent(styleLabel: string, content: string, tagName?: string, style?: string): string {
-    const tag = tagName ?? styleLabel
-    const className = `${styleLabel.replace(UNDERSCORE_REGEX, `-`)}`
-    const headingAttr = HEADING_TAG_REGEX.test(tag) ? ` data-heading="true"` : ``
-    const styleAttr = style ? ` style="${style}"` : ``
-    return `<${tag} class="${className}"${headingAttr}${styleAttr}>${content}</${tag}>`
   }
 
   function reset(newOpts: Partial<IOpts>): void {
@@ -257,21 +208,13 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
 
     image({ href, title, text }: Tokens.Image): string {
-      let widthAttr = ``
-      let heightAttr = ``
-      let altText = text
-
-      const sizeMatch = text.match(/\|(\d+)(?:x(\d+))?$/)
-      if (sizeMatch) {
-        altText = text.replace(/\|(\d+)(?:x(\d+))?$/, ``)
-        widthAttr = sizeMatch[1] ? ` width="${sizeMatch[1]}"` : ``
-        heightAttr = sizeMatch[2] ? ` height="${sizeMatch[2]}"` : ``
-      }
-
-      const newText = opts.legend ? transform(opts.legend, altText, title, href) : ``
-      const subText = newText ? styledContent(`figcaption`, newText) : ``
-      const titleAttr = title ? ` title="${title}"` : ``
-      return `<figure><img src="${href}"${titleAttr}${widthAttr}${heightAttr} alt="${altText}"/>${subText}</figure>`
+      return renderImage({
+        href,
+        legend: opts.legend,
+        styledContent,
+        text,
+        title,
+      })
     },
 
     link({ href, title, text, tokens }: Tokens.Link): string {

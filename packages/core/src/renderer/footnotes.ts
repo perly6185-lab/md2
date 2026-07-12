@@ -1,4 +1,4 @@
-type StyledContent = (styleLabel: string, content: string, tagName?: string, style?: string) => string
+import type { StyledContent } from './html'
 
 type Footnote = [number, string, string]
 
