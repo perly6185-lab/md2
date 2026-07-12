@@ -1,21 +1,6 @@
 import type { IOpts, RendererAPI } from '@md/shared/types'
 import type { RendererObject, Tokens } from 'marked'
 import hljs from 'highlight.js/lib/core'
-import { Marked } from 'marked'
-import {
-  getBuiltInRegistry,
-  markedAlert,
-  markedComponent,
-  markedFootnotes,
-  markedInfographic,
-  markedMarkup,
-  markedMermaid,
-  markedPlantUML,
-  markedRuby,
-  markedSlider,
-  markedToc,
-  MDKatex,
-} from '../extensions'
 import { escapeHtml } from '../utils/basicHelpers'
 import { COMMON_LANGUAGES } from '../utils/languages'
 import { renderCodeBlock } from './codeBlocks'
@@ -25,6 +10,7 @@ import { styledContent } from './html'
 import { renderImage } from './images'
 import { renderLink } from './links'
 import { createListState } from './lists'
+import { createMarkdownParser } from './markdownParser'
 import { renderHorizontalRule } from './rules'
 import { renderTable, renderTableCell } from './tables'
 
@@ -43,11 +29,6 @@ function isStandaloneKatexBlock(html: string): boolean {
 export function initRenderer(opts: IOpts = {}): RendererAPI {
   const footnotes = createFootnoteRegistry()
   const listState = createListState()
-  const markdownParser = new Marked()
-
-  markdownParser.setOptions({
-    breaks: true,
-  })
 
   function getOpts(): IOpts {
     return opts
@@ -197,30 +178,10 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
   }
 
-  markdownParser.use({ renderer })
-  // 新主题系统：扩展不再需要 styles 参数
-  // 通过闭包传入注册表 getter，避免直接依赖全局状态
-  markdownParser.use(markedComponent(() => opts.components ?? getBuiltInRegistry()))
-  markdownParser.use(markedMarkup())
-  markdownParser.use(markedToc())
-  markdownParser.use(markedSlider())
-  markdownParser.use(markedAlert({}))
-  markdownParser.use(MDKatex({ nonStandard: true }, true))
-  markdownParser.use(markedFootnotes())
-  markdownParser.use(markedMermaid(() => ({
-    themeMode: opts.themeMode,
-    diagramMessages: opts.diagramMessages,
-  })))
-  markdownParser.use(markedPlantUML({
-    inlineSvg: true, // 启用SVG内嵌，适用于微信公众号
-    getDiagramMessages: () => opts.diagramMessages,
-    getThemeMode: () => opts.themeMode,
-  }))
-  markdownParser.use(markedInfographic(() => ({
-    themeMode: opts.themeMode,
-    diagramMessages: opts.diagramMessages,
-  })))
-  markdownParser.use(markedRuby())
+  const markdownParser = createMarkdownParser({
+    getOptions: getOpts,
+    renderer,
+  })
 
   return {
     buildAddition: buildAdditionStyle,
