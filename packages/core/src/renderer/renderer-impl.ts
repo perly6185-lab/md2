@@ -1,9 +1,5 @@
 import type { IOpts, RendererAPI } from '@md/shared/types'
-import type { FrontMatterData } from '@md/shared/types/front-matter'
-import type { ReadTimeResults } from '@md/shared/utils/readingTime'
 import type { RendererObject, Tokens } from 'marked'
-import readingTime from '@md/shared/utils/readingTime'
-import frontMatter from 'front-matter'
 import hljs from 'highlight.js/lib/core'
 import { Marked } from 'marked'
 import {
@@ -23,6 +19,7 @@ import {
 import { escapeHtml } from '../utils/basicHelpers'
 import { COMMON_LANGUAGES } from '../utils/languages'
 import { renderCodeBlock } from './codeBlocks'
+import { buildAdditionStyle, buildReadingTime, parseFrontMatterAndContent } from './document'
 import { createFootnoteRegistry } from './footnotes'
 import { styledContent } from './html'
 import { renderImage } from './images'
@@ -39,55 +36,8 @@ export { hljs }
 
 const PARAGRAPH_WRAPPER_REGEX = /^<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/
 
-const ADDITION_STYLE = `
-    <style>
-      .preview-wrapper pre::before {
-        position: absolute;
-        top: 0;
-        right: 0;
-        color: #ccc;
-        text-align: center;
-        font-size: 0.8em;
-        padding: 5px 10px 0;
-        line-height: 15px;
-        height: 15px;
-        font-weight: 600;
-      }
-    </style>
-  `
-
 function isStandaloneKatexBlock(html: string): boolean {
   return /^<section class="katex-block"[\s\S]*<\/section>\s*$/.test(html.trim())
-}
-
-interface ParseResult {
-  yamlData: FrontMatterData
-  markdownContent: string
-  readingTime: ReadTimeResults
-}
-
-function parseFrontMatterAndContent(markdownText: string): ParseResult {
-  try {
-    const parsed = frontMatter(markdownText)
-    const yamlData = parsed.attributes as FrontMatterData
-    const markdownContent = parsed.body
-
-    const readingTimeResult = readingTime(markdownContent)
-
-    return {
-      yamlData,
-      markdownContent,
-      readingTime: readingTimeResult,
-    }
-  }
-  catch (error) {
-    console.error(`Error parsing front-matter:`, error)
-    return {
-      yamlData: {},
-      markdownContent: markdownText,
-      readingTime: readingTime(markdownText),
-    }
-  }
 }
 
 export function initRenderer(opts: IOpts = {}): RendererAPI {
@@ -111,20 +61,6 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
 
   function setOptions(newOpts: Partial<IOpts>): void {
     opts = { ...opts, ...newOpts }
-  }
-
-  function buildReadingTime(readingTime: ReadTimeResults): string {
-    if (!opts.countStatus) {
-      return ``
-    }
-    if (!readingTime.words) {
-      return ``
-    }
-    return `
-      <blockquote class="md-blockquote">
-        <p class="md-blockquote-p">字数 ${readingTime?.words}，阅读大约需 ${Math.ceil(readingTime?.minutes)} 分钟</p>
-      </blockquote>
-    `
   }
 
   const buildFootnotes = () => {
@@ -287,7 +223,7 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
   markdownParser.use(markedRuby())
 
   return {
-    buildAddition: () => ADDITION_STYLE,
+    buildAddition: buildAdditionStyle,
     buildFootnotes,
     setOptions,
     reset,
@@ -295,7 +231,9 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     renderMarkdownToHtml(markdown: string) {
       return markdownParser.parse(markdown) as string
     },
-    buildReadingTime,
+    buildReadingTime(readingTime) {
+      return buildReadingTime(readingTime, opts.countStatus)
+    },
     createContainer(content: string) {
       return styledContent(`container`, content, `section`)
     },

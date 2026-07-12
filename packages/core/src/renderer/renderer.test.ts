@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { postProcessHtml, renderMarkdown } from '../utils/markdownHelpers'
 import { initRenderer } from './renderer-impl'
 
@@ -36,6 +36,20 @@ describe('initRenderer', () => {
 
     expect(markdownContent.trim()).toBe(`# Body`)
     expect(readingTime.words).toBeGreaterThan(0)
+  })
+
+  it('falls back to raw markdown when YAML front matter is invalid', () => {
+    const renderer = initRenderer({})
+    const errorSpy = vi.spyOn(console, `error`).mockImplementation(() => {})
+    const markdown = `---\n: bad\n---\n# Body`
+
+    const { markdownContent, readingTime, yamlData } = renderer.parseFrontMatterAndContent(markdown)
+
+    expect(yamlData).toEqual({})
+    expect(markdownContent).toBe(markdown)
+    expect(readingTime.words).toBeGreaterThan(0)
+    expect(errorSpy).toHaveBeenCalledWith(`Error parsing front-matter:`, expect.any(Error))
+    errorSpy.mockRestore()
   })
 
   it('includes reading time stats in postProcessHtml output', () => {
