@@ -3,7 +3,12 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { activateHandler } from './activate'
 import { authMiddleware, authRoutes, meHandler } from './auth'
-import { isAllowedOrigin, isBrowserExtensionOrigin } from './origin'
+import {
+  API_CORS_ALLOW_HEADERS,
+  API_CORS_ALLOW_METHODS,
+  API_CORS_MAX_AGE_SECONDS,
+  resolveCorsOrigin,
+} from './cors-config'
 import { createShareHandler, deleteShareHandler, listSharesHandler, unlockShareHandler, viewShareHandler } from './share'
 import { SHARE_FAVICON_PATH } from './share-head'
 import { pullHandler, pushHandler } from './sync'
@@ -11,13 +16,6 @@ import { uploadHandler } from './upload'
 import { afdianWebhookHandler } from './webhook'
 
 const API_HEALTH_RESPONSE = { name: `md-api`, ok: true }
-const API_CORS_ALLOW_METHODS = [`GET`, `POST`, `DELETE`, `OPTIONS`]
-const API_CORS_ALLOW_HEADERS = [`Authorization`, `Content-Type`]
-const API_CORS_MAX_AGE_SECONDS = 86400
-
-function resolveCorsOrigin(env: Env, origin: string | undefined): string | null {
-  return isAllowedOrigin(env, origin) || isBrowserExtensionOrigin(origin) ? origin ?? null : null
-}
 
 const app = new Hono<{ Bindings: Env, Variables: { userId: string } }>()
 
