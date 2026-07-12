@@ -98,6 +98,28 @@ describe('initRenderer', () => {
     expect(output).not.toContain(`引用链接`)
   })
 
+  it('renders aligned tables with the preview table wrapper', () => {
+    const renderer = initRenderer({})
+    const { html } = renderMarkdown(
+      `| Name | Count | Note |\n| :--- | ---: | :---: |\n| Alpha | 2 | ok |`,
+      renderer,
+    )
+
+    expect(html).toContain(`class="preview-table"`)
+    expect(html).toContain(`class="th" style="text-align: left">Name`)
+    expect(html).toContain(`class="th" style="text-align: right">Count`)
+    expect(html).toContain(`class="th" style="text-align: center">Note`)
+    expect(html).toContain(`class="td" style="text-align: right">2`)
+  })
+
+  it('renders horizontal rule variants from source markers', () => {
+    const renderer = initRenderer({})
+
+    expect(renderMarkdown(`---`, renderer).html).toContain(`class="hr hr-dash"`)
+    expect(renderMarkdown(`***`, renderer).html).toContain(`class="hr hr-star"`)
+    expect(renderMarkdown(`___`, renderer).html).toContain(`class="hr hr-underscore"`)
+  })
+
   it('renders single-line block formula as katex-block without paragraph wrapper', () => {
     const renderer = initRenderer({})
     const formula = `$$ITE_{i}=Y_{i,1}-Y_{i,0} \\tag{1}$$`

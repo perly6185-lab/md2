@@ -28,6 +28,8 @@ import { styledContent } from './html'
 import { renderImage } from './images'
 import { renderLink } from './links'
 import { createListState } from './lists'
+import { renderHorizontalRule } from './rules'
+import { renderTable, renderTableCell } from './tables'
 
 Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
   hljs.registerLanguage(name, lang)
@@ -238,45 +240,24 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
 
     table({ header, rows }: Tokens.Table): string {
-      const headerRow = header
-        .map((cell) => {
-          const text = this.parser.parseInline(cell.tokens)
-          return styledContent(`th`, text, undefined, `text-align: ${cell.align || `left`}`)
-        })
-        .join(``)
-      const body = rows
-        .map((row) => {
-          const rowContent = row
-            .map(cell => this.tablecell(cell))
-            .join(``)
-          return styledContent(`tr`, rowContent)
-        })
-        .join(``)
-      return `
-        <section style="max-width: 100%; overflow: auto; -webkit-overflow-scrolling: touch">
-          <table class="preview-table">
-            <thead>${headerRow}</thead>
-            <tbody>${body}</tbody>
-          </table>
-        </section>
-      `
+      return renderTable({
+        header,
+        parseInline: tokens => this.parser.parseInline(tokens),
+        rows,
+        styledContent,
+      })
     },
 
     tablecell(token: Tokens.TableCell): string {
-      const text = this.parser.parseInline(token.tokens)
-      return styledContent(`td`, text, undefined, `text-align: ${token.align || `left`}`)
+      return renderTableCell({
+        cell: token,
+        parseInline: tokens => this.parser.parseInline(tokens),
+        styledContent,
+      })
     },
 
     hr(token: Tokens.Hr): string {
-      const raw = token.raw.trim()
-      let variant = `dash`
-      if (raw.includes(`*`)) {
-        variant = `star`
-      }
-      else if (raw.includes(`_`)) {
-        variant = `underscore`
-      }
-      return `<hr class="hr hr-${variant}">`
+      return renderHorizontalRule(token)
     },
   }
 
