@@ -24,6 +24,7 @@ import { escapeHtml } from '../utils/basicHelpers'
 import { COMMON_LANGUAGES } from '../utils/languages'
 import { renderCodeBlock } from './codeBlocks'
 import { createFootnoteRegistry } from './footnotes'
+import { createListState } from './lists'
 
 Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
   hljs.registerLanguage(name, lang)
@@ -123,8 +124,7 @@ function parseFrontMatterAndContent(markdownText: string): ParseResult {
 
 export function initRenderer(opts: IOpts = {}): RendererAPI {
   const footnotes = createFootnoteRegistry()
-  const listOrderedStack: boolean[] = []
-  const listCounters: number[] = []
+  const listState = createListState()
   const markdownParser = new Marked()
 
   markdownParser.setOptions({
@@ -152,8 +152,7 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
 
   function reset(newOpts: Partial<IOpts>): void {
     footnotes.reset()
-    listOrderedStack.length = 0
-    listCounters.length = 0
+    listState.reset()
     setOptions(newOpts)
   }
 
@@ -218,15 +217,16 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
 
     list({ ordered, items, start = 1 }: Tokens.List) {
-      listOrderedStack.push(ordered)
-      listCounters.push(Number(start))
-
-      const html = items
-        .map(item => this.listitem(item))
-        .join(``)
-
-      listOrderedStack.pop()
-      listCounters.pop()
+      listState.enter(ordered, start)
+      let html = ``
+      try {
+        html = items
+          .map(item => this.listitem(item))
+          .join(``)
+      }
+      finally {
+        listState.exit()
+      }
 
       return styledContent(
         ordered ? `ol` : `ul`,
@@ -236,15 +236,7 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
 
     // 2. listitem：从栈顶取 ordered + counter，计算 prefix 并自增
     listitem(token: Tokens.ListItem) {
-      const ordered = listOrderedStack[listOrderedStack.length - 1]
-      const idx = listCounters[listCounters.length - 1]!
-
-      // 准备下一个
-      listCounters[listCounters.length - 1] = idx + 1
-
-      const prefix = ordered
-        ? `${idx}. `
-        : `• `
+      const prefix = listState.nextPrefix()
 
       // 渲染内容：优先 inline，fallback 去掉 <p> 包裹
       let content: string
