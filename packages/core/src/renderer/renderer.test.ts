@@ -121,6 +121,39 @@ describe('initRenderer', () => {
     expect(output).not.toContain(`引用链接`)
   })
 
+  it('applies updated renderer options and clears transient state on reset', () => {
+    const renderer = initRenderer({
+      citeStatus: false,
+      isShowLineNumber: false,
+      legend: `none`,
+    })
+
+    const beforeImage = renderMarkdown(`![Alt](https://x.test/a.png)`, renderer).html
+    expect(beforeImage).not.toContain(`figcaption`)
+
+    renderer.setOptions({
+      citeStatus: true,
+      isShowLineNumber: true,
+      legend: `alt`,
+    })
+
+    const afterImage = renderMarkdown(`![Alt](https://x.test/a.png)`, renderer).html
+    expect(afterImage).toContain(`<figcaption class="figcaption">Alt</figcaption>`)
+
+    const cited = renderMarkdown(`[A](https://a.test)`, renderer)
+    expect(cited.html).toContain(`<sup>[1]</sup>`)
+    expect(postProcessHtml(cited.html, cited.readingTime, renderer)).toContain(`引用链接`)
+
+    const code = renderMarkdown(`~~~notregistered\nhi\n~~~`, renderer).html
+    expect(code).toContain(`data-show-line-number="true"`)
+
+    renderer.reset({ citeStatus: false })
+
+    const uncited = renderMarkdown(`[B](https://b.test)`, renderer)
+    expect(uncited.html).not.toContain(`<sup>`)
+    expect(postProcessHtml(uncited.html, uncited.readingTime, renderer)).not.toContain(`引用链接`)
+  })
+
   it('renders aligned tables with the preview table wrapper', () => {
     const renderer = initRenderer({})
     const { html } = renderMarkdown(
