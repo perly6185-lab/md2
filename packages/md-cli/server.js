@@ -14,6 +14,8 @@ import {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 const arg = parseArgv()
+const distDir = path.join(__dirname, 'dist')
+const distIndexPath = path.join(distDir, 'index.html')
 
 // unicloud 服务空间配置
 const spaceInfo = {
@@ -88,7 +90,21 @@ export function createServer(port = 8800) {
     }
   })
 
-  console.log('代理到: https://md.doocs.org/')
+  if (fs.existsSync(distIndexPath)) {
+    console.log(`托管本地构建产物: ${distDir}`)
+    app.use('/md', express.static(distDir))
+    app.use(express.static(distDir))
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        return next()
+      }
+
+      res.sendFile(distIndexPath)
+    })
+    return app
+  }
+
+  console.log('未找到本地构建产物，代理到: https://md.doocs.org/')
   app.use(createProxyMiddleware({
     target: 'https://md.doocs.org/',
     changeOrigin: true,
