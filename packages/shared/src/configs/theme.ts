@@ -20,22 +20,8 @@ export const themeOptionsMap = {
     value: `simple`,
     desc: `@okooo5km`,
   },
-}
+} satisfies Record<ThemeName, IConfigOption<ThemeName>>
 
-export const themeOptions: IConfigOption<ThemeName>[] = [
-  {
-    label: `经典`,
-    value: `default`,
-    desc: ``,
-  },
-  {
-    label: `优雅`,
-    value: `grace`,
-    desc: `@brzhang`,
-  },
-  {
-    label: `简洁`,
-    value: `simple`,
-    desc: `@okooo5km`,
-  },
-]
+export const themeOptions: IConfigOption<ThemeName>[] = Object.values(themeOptionsMap).map(option => ({
+  ...option,
+}))
