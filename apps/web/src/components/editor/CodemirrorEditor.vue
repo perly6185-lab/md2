@@ -8,6 +8,7 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import { useCursorSync } from '@/composables/useCursorSync'
+import { useEditorPanelResizing } from '@/composables/useEditorPanelResizing'
 import { useScrollSync } from '@/composables/useScrollSync'
 import { useUIStore } from '@/stores/ui'
 
@@ -30,6 +31,7 @@ const {
   isOpenPostSlider,
   isOpenFolderPanel,
   isOpenRightSlider,
+  isShowCssEditor,
   viewMode,
   enableScrollSync,
   isShowUploadImgDialog,
@@ -88,98 +90,20 @@ function handleUploadImage(file: File, cb?: any, applyUrl?: boolean) {
   editorPanelCompRef.value?.uploadImage(file, cb, applyUrl)
 }
 
-// --- 面板尺寸配置 ---
-const hasSidePanel = computed(() => !isMobile.value && (isOpenRightSlider.value || uiStore.isShowCssEditor))
-
-const editorPanelConfig = computed(() => {
-  const mode = viewMode.value
-  if (mode === `preview`) {
-    return { min: 0, max: 0 }
-  }
-  if (mode === `edit`) {
-    return hasSidePanel.value ? { min: 30, max: 85 } : { min: 100, max: 100 }
-  }
-  if (isMobile.value)
-    return { min: 30, max: 70 }
-  return { min: 15, max: 85 }
-})
-
-const previewPanelConfig = computed(() => {
-  const mode = viewMode.value
-  if (mode === `edit`) {
-    return { min: 0, max: 0 }
-  }
-  if (mode === `preview`) {
-    return hasSidePanel.value ? { min: 20, max: 75 } : { min: 100, max: 100 }
-  }
-  if (isMobile.value)
-    return { min: 30, max: 70 }
-  return { min: 15, max: 85 }
-})
-
-const editorResizablePanelRef = ref<InstanceType<typeof ResizablePanel> | null>(null)
-const previewResizablePanelRef = ref<InstanceType<typeof ResizablePanel> | null>(null)
-const postSliderPanelRef = ref<InstanceType<typeof ResizablePanel> | null>(null)
-const cssEditorPanelRef = ref<InstanceType<typeof ResizablePanel> | null>(null)
-const rightSliderPanelRef = ref<InstanceType<typeof ResizablePanel> | null>(null)
-
-function redistributePanelSizes() {
-  const cssTarget = !isMobile.value && uiStore.isShowCssEditor ? 25 : 0
-  const rightTarget = !isMobile.value && isOpenRightSlider.value ? 30 : 0
-  const contentSpace = 100 - cssTarget - rightTarget
-
-  const mode = viewMode.value
-  if (mode === `edit`) {
-    editorResizablePanelRef.value?.resize(contentSpace)
-    previewResizablePanelRef.value?.resize(0)
-  }
-  else if (mode === `preview`) {
-    editorResizablePanelRef.value?.resize(0)
-    previewResizablePanelRef.value?.resize(contentSpace)
-  }
-  else {
-    const half = contentSpace / 2
-    editorResizablePanelRef.value?.resize(half)
-    previewResizablePanelRef.value?.resize(half)
-  }
-
-  cssEditorPanelRef.value?.resize(cssTarget)
-  rightSliderPanelRef.value?.resize(rightTarget)
-}
-
-watch(viewMode, () => {
-  nextTick(redistributePanelSizes)
-})
-
-watch(() => uiStore.isShowCssEditor, () => {
-  nextTick(redistributePanelSizes)
-})
-
-watch(isOpenRightSlider, () => {
-  nextTick(redistributePanelSizes)
-})
-
-watch(isOpenPostSlider, (open) => {
-  if (isMobile.value)
-    return
-  nextTick(() => {
-    postSliderPanelRef.value?.resize(open ? 20 : 0)
-  })
-})
-
-watch(isMobile, (mobile) => {
-  if (mobile)
-    postSliderPanelRef.value?.resize(0)
-  else if (isOpenPostSlider.value)
-    nextTick(() => postSliderPanelRef.value?.resize(20))
-})
-
-onMounted(() => {
-  nextTick(() => {
-    redistributePanelSizes()
-    if (!isMobile.value && isOpenPostSlider.value)
-      postSliderPanelRef.value?.resize(20)
-  })
+const {
+  cssEditorPanelRef,
+  editorPanelConfig,
+  editorResizablePanelRef,
+  postSliderPanelRef,
+  previewPanelConfig,
+  previewResizablePanelRef,
+  rightSliderPanelRef,
+} = useEditorPanelResizing({
+  isMobile,
+  isOpenPostSlider,
+  isOpenRightSlider,
+  isShowCssEditor,
+  viewMode,
 })
 
 // --- 进度条 ---
@@ -255,17 +179,17 @@ const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading
               </ResizablePanel>
 
               <!-- CSS 编辑器面板 -->
-              <ResizableHandle v-show="!isMobile && uiStore.isShowCssEditor" class="hidden md:block" />
+              <ResizableHandle v-show="!isMobile && isShowCssEditor" class="hidden md:block" />
               <ResizablePanel
                 ref="cssEditorPanelRef"
                 :order="3"
                 :default-size="0"
-                :min-size="!isMobile && uiStore.isShowCssEditor ? 10 : 0"
-                :max-size="!isMobile && uiStore.isShowCssEditor ? 60 : 0"
+                :min-size="!isMobile && isShowCssEditor ? 10 : 0"
+                :max-size="!isMobile && isShowCssEditor ? 60 : 0"
                 collapsible
                 :collapsed-size="0"
               >
-                <CssEditor v-if="!isMobile && uiStore.isShowCssEditor" />
+                <CssEditor v-if="!isMobile && isShowCssEditor" />
               </ResizablePanel>
 
               <!-- 样式面板 -->
