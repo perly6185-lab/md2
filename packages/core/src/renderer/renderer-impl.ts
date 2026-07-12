@@ -1,10 +1,9 @@
 import type { IOpts, RendererAPI } from '@md/shared/types'
 import type { RendererObject, Tokens } from 'marked'
-import hljs from 'highlight.js/lib/core'
-import { COMMON_LANGUAGES } from '../utils/languages'
 import { renderCodeBlock } from './codeBlocks'
 import { buildAdditionStyle, buildReadingTime, parseFrontMatterAndContent } from './document'
 import { createFootnoteRegistry } from './footnotes'
+import { hljs } from './highlighting'
 import { styledContent } from './html'
 import { renderImage } from './images'
 import { renderLink } from './links'
@@ -13,10 +12,6 @@ import { createMarkdownParser } from './markdownParser'
 import { renderHorizontalRule } from './rules'
 import { renderTable, renderTableCell } from './tables'
 import { renderBlockquote, renderCodespan, renderEm, renderHeading, renderParagraph, renderStrong } from './text'
-
-Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
-  hljs.registerLanguage(name, lang)
-})
 
 export { hljs }
 
