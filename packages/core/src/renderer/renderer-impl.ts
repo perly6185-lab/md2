@@ -1,7 +1,6 @@
 import type { IOpts, RendererAPI } from '@md/shared/types'
 import type { RendererObject, Tokens } from 'marked'
 import hljs from 'highlight.js/lib/core'
-import { escapeHtml } from '../utils/basicHelpers'
 import { COMMON_LANGUAGES } from '../utils/languages'
 import { renderCodeBlock } from './codeBlocks'
 import { buildAdditionStyle, buildReadingTime, parseFrontMatterAndContent } from './document'
@@ -13,16 +12,13 @@ import { createListState, renderList, renderListItem } from './lists'
 import { createMarkdownParser } from './markdownParser'
 import { renderHorizontalRule } from './rules'
 import { renderTable, renderTableCell } from './tables'
+import { renderBlockquote, renderCodespan, renderEm, renderHeading, renderParagraph, renderStrong } from './text'
 
 Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
   hljs.registerLanguage(name, lang)
 })
 
 export { hljs }
-
-function isStandaloneKatexBlock(html: string): boolean {
-  return /^<section class="katex-block"[\s\S]*<\/section>\s*$/.test(html.trim())
-}
 
 export function initRenderer(opts: IOpts = {}): RendererAPI {
   const footnotes = createFootnoteRegistry()
@@ -49,25 +45,27 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
   const renderer: RendererObject = {
     heading({ tokens, depth }: Tokens.Heading) {
       const text = this.parser.parseInline(tokens)
-      const tag = `h${depth}`
-      return styledContent(tag, text)
+      return renderHeading({
+        depth,
+        styledContent,
+        text,
+      })
     },
 
     paragraph({ tokens }: Tokens.Paragraph): string {
       const text = this.parser.parseInline(tokens)
-      const isFigureImage = text.includes(`<figure`) && text.includes(`<img`)
-      const isEmpty = text.trim() === ``
-      const isKatexOnly = isStandaloneKatexBlock(text)
-      if (isFigureImage || isEmpty || isKatexOnly) {
-        return text
-      }
-      return styledContent(`p`, text)
+      return renderParagraph({
+        styledContent,
+        text,
+      })
     },
 
     blockquote({ tokens }: Tokens.Blockquote): string {
       const text = this.parser.parse(tokens)
-      // 新主题系统：blockquote 内的 p 标签由 CSS 选择器 `blockquote p` 控制
-      return styledContent(`blockquote`, text)
+      return renderBlockquote({
+        styledContent,
+        text,
+      })
     },
 
     code({ text, lang = `` }: Tokens.Code): string {
@@ -80,8 +78,10 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
 
     codespan({ text }: Tokens.Codespan): string {
-      const escapedText = escapeHtml(text)
-      return styledContent(`codespan`, escapedText, `code`)
+      return renderCodespan({
+        styledContent,
+        text,
+      })
     },
 
     list({ ordered, items, start = 1 }: Tokens.List) {
@@ -128,11 +128,17 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
 
     strong({ tokens }: Tokens.Strong): string {
-      return styledContent(`strong`, this.parser.parseInline(tokens))
+      return renderStrong({
+        styledContent,
+        text: this.parser.parseInline(tokens),
+      })
     },
 
     em({ tokens }: Tokens.Em): string {
-      return styledContent(`em`, this.parser.parseInline(tokens))
+      return renderEm({
+        styledContent,
+        text: this.parser.parseInline(tokens),
+      })
     },
 
     table({ header, rows }: Tokens.Table): string {

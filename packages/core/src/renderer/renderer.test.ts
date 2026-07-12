@@ -12,6 +12,15 @@ describe('initRenderer', () => {
     expect(html).toContain(`World`)
   })
 
+  it('renders inline marks and escapes code spans', () => {
+    const renderer = initRenderer({})
+    const { html } = renderMarkdown(`**Bold** *Em* \`a < b\``, renderer)
+
+    expect(html).toContain(`<strong class="strong">Bold</strong>`)
+    expect(html).toContain(`<em class="em">Em</em>`)
+    expect(html).toContain(`<code class="codespan">a &lt; b</code>`)
+  })
+
   it('strips script tags during sanitization', () => {
     const renderer = initRenderer({})
     const { html } = renderMarkdown(`<script>alert(1)</script>\n\nSafe text`, renderer)
