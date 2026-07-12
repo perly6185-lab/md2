@@ -134,6 +134,14 @@ describe('initRenderer', () => {
     expect(renderMarkdown(`___`, renderer).html).toContain(`class="hr hr-underscore"`)
   })
 
+  it('renders ordered list prefixes from the source start number', () => {
+    const renderer = initRenderer({})
+    const { html } = renderMarkdown(`5. Five\n6. Six`, renderer)
+
+    expect(html).toContain(`<li class="listitem">5. Five</li>`)
+    expect(html).toContain(`<li class="listitem">6. Six</li>`)
+  })
+
   it('renders single-line block formula as katex-block without paragraph wrapper', () => {
     const renderer = initRenderer({})
     const formula = `$$ITE_{i}=Y_{i,1}-Y_{i,0} \\tag{1}$$`

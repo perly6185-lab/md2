@@ -9,7 +9,7 @@ import { createFootnoteRegistry } from './footnotes'
 import { styledContent } from './html'
 import { renderImage } from './images'
 import { renderLink } from './links'
-import { createListState } from './lists'
+import { createListState, renderList, renderListItem } from './lists'
 import { createMarkdownParser } from './markdownParser'
 import { renderHorizontalRule } from './rules'
 import { renderTable, renderTableCell } from './tables'
@@ -19,8 +19,6 @@ Object.entries(COMMON_LANGUAGES).forEach(([name, lang]) => {
 })
 
 export { hljs }
-
-const PARAGRAPH_WRAPPER_REGEX = /^<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/
 
 function isStandaloneKatexBlock(html: string): boolean {
   return /^<section class="katex-block"[\s\S]*<\/section>\s*$/.test(html.trim())
@@ -87,43 +85,24 @@ export function initRenderer(opts: IOpts = {}): RendererAPI {
     },
 
     list({ ordered, items, start = 1 }: Tokens.List) {
-      listState.enter(ordered, start)
-      let html = ``
-      try {
-        html = items
-          .map(item => this.listitem(item))
-          .join(``)
-      }
-      finally {
-        listState.exit()
-      }
-
-      return styledContent(
-        ordered ? `ol` : `ul`,
-        html,
-      )
+      return renderList({
+        items,
+        listState,
+        ordered,
+        renderItem: item => this.listitem(item) as string,
+        start,
+        styledContent,
+      })
     },
 
-    // 2. listitem：从栈顶取 ordered + counter，计算 prefix 并自增
     listitem(token: Tokens.ListItem) {
-      const prefix = listState.nextPrefix()
-
-      // 渲染内容：优先 inline，fallback 去掉 <p> 包裹
-      let content: string
-      try {
-        content = this.parser.parseInline(token.tokens)
-      }
-      catch {
-        content = this.parser
-          .parse(token.tokens)
-          .replace(PARAGRAPH_WRAPPER_REGEX, `$1`)
-      }
-
-      return styledContent(
-        `listitem`,
-        `${prefix}${content}`,
-        `li`,
-      )
+      return renderListItem({
+        listState,
+        parseBlock: tokens => this.parser.parse(tokens),
+        parseInline: tokens => this.parser.parseInline(tokens),
+        styledContent,
+        token,
+      })
     },
 
     image({ href, title, text }: Tokens.Image): string {
