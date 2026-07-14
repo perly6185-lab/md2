@@ -29,9 +29,9 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1076.0",
-    "@aws-sdk/s3-request-presigner": "^3.1076.0",
-    "@lucide/vue": "^1.22.0",
+    "@aws-sdk/client-s3": "^3.1086.0",
+    "@aws-sdk/s3-request-presigner": "^3.1086.0",
+    "@lucide/vue": "^1.24.0",
     "@md/core": "workspace:*",
     "@md/shared": "workspace:*",
     "@vee-validate/yup": "^4.15.1",
@@ -48,7 +48,7 @@
     "isomorphic-dompurify": "^3.18.0",
     "jszip": "^3.10.1",
     "juice": "^12.1.1",
-    "marked": "^18.0.5",
+    "marked": "^18.0.6",
     "pinia": "^3.0.4",
     "qiniu-js": "^3.4.4",
     "reka-ui": "^2.10.1",
@@ -63,7 +63,7 @@
     "yup": "^1.7.1"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.42.3",
+    "@cloudflare/vite-plugin": "1.44.0",
     "@cloudflare/workers-types": "^4.20260629.1",
     "@md/config": "workspace:*",
     "@tailwindcss/vite": "^4.3.2",
@@ -74,7 +74,7 @@
     "@vitejs/plugin-vue": "^6.0.7",
     "cross-env": "^10.1.0",
     "less": "^4.6.7",
-    "linkedom": "^0.18.12",
+    "linkedom": "^0.18.13",
     "mathjax": "^3.2.2",
     "npm-run-all2": "^9.0.2",
     "ohash": "^2.0.11",
@@ -87,9 +87,9 @@
     "vite": "^8.1.0",
     "vite-plugin-radar": "^0.11.0",
     "vite-plugin-vue-devtools": "^8.1.5",
-    "vitest": "^4.1.9",
-    "vue-tsc": "^3.3.5",
-    "wrangler": "^4.105.0",
+    "vitest": "^4.1.10",
+    "vue-tsc": "^3.3.7",
+    "wrangler": "^4.110.0",
     "wxt": "^0.20.27"
   }
 }
