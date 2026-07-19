@@ -297,6 +297,7 @@ export function markedPlantUML(options: PlantUMLOptions = {}): MarkedExtension {
     className: options.className || `plantuml-diagram`,
     inlineSvg: options.inlineSvg || false,
     getDiagramMessages: options.getDiagramMessages,
+    getThemeMode: options.getThemeMode,
     styles: {
       container: {
         textAlign: `center`,
