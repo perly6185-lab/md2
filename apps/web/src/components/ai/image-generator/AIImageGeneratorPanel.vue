@@ -38,6 +38,11 @@ const { t } = useI18n()
 
 /** 图片链接有效期：1小时（毫秒） */
 const EXPIRY_TIME = 60 * 60 * 1000
+const IMAGE_STORAGE_KEYS = {
+  images: `ai_generated_images`,
+  prompts: `ai_image_prompts`,
+  timestamps: `ai_image_timestamps`,
+} as const
 
 /* ---------- 编辑器引用 ---------- */
 const editorStore = useEditorStore()
@@ -78,24 +83,24 @@ function isImageExpired(timestamp: number): boolean {
 }
 
 async function cleanExpiredImages() {
-  const images = await store.getJSON<string[]>(`ai_generated_images`, [])
-  const timestamps = await store.getJSON<number[]>(`ai_image_timestamps`, [])
+  const images = await store.getJSON<string[]>(IMAGE_STORAGE_KEYS.images, [])
+  const timestamps = await store.getJSON<number[]>(IMAGE_STORAGE_KEYS.timestamps, [])
 
   // 没有数据则无需清理
   if (images.length === 0) {
     return
   }
 
-  const prompts = await store.getJSON<string[]>(`ai_image_prompts`, [])
+  const prompts = await store.getJSON<string[]>(IMAGE_STORAGE_KEYS.prompts, [])
 
   // 如果没有时间戳数据，说明是旧版本，默认清除所有数据
   if (timestamps.length === 0) {
     generatedImages.value = []
     imagePrompts.value = []
     imageTimestamps.value = []
-    await store.remove(`ai_generated_images`)
-    await store.remove(`ai_image_prompts`)
-    await store.remove(`ai_image_timestamps`)
+    await store.remove(IMAGE_STORAGE_KEYS.images)
+    await store.remove(IMAGE_STORAGE_KEYS.prompts)
+    await store.remove(IMAGE_STORAGE_KEYS.timestamps)
     return
   }
 
@@ -119,14 +124,14 @@ async function cleanExpiredImages() {
   // 如果有数据被清除，更新存储
   if (validImages.length < images.length) {
     if (validImages.length > 0) {
-      await store.setJSON(`ai_generated_images`, validImages)
-      await store.setJSON(`ai_image_prompts`, validPrompts)
-      await store.setJSON(`ai_image_timestamps`, validTimestamps)
+      await store.setJSON(IMAGE_STORAGE_KEYS.images, validImages)
+      await store.setJSON(IMAGE_STORAGE_KEYS.prompts, validPrompts)
+      await store.setJSON(IMAGE_STORAGE_KEYS.timestamps, validTimestamps)
     }
     else {
-      await store.remove(`ai_generated_images`)
-      await store.remove(`ai_image_prompts`)
-      await store.remove(`ai_image_timestamps`)
+      await store.remove(IMAGE_STORAGE_KEYS.images)
+      await store.remove(IMAGE_STORAGE_KEYS.prompts)
+      await store.remove(IMAGE_STORAGE_KEYS.timestamps)
     }
   }
 }
@@ -148,9 +153,9 @@ onMounted(async () => {
     generatedImages.value = []
     imagePrompts.value = []
     imageTimestamps.value = []
-    await store.remove(`ai_generated_images`)
-    await store.remove(`ai_image_prompts`)
-    await store.remove(`ai_image_timestamps`)
+    await store.remove(IMAGE_STORAGE_KEYS.images)
+    await store.remove(IMAGE_STORAGE_KEYS.prompts)
+    await store.remove(IMAGE_STORAGE_KEYS.timestamps)
   }
   else {
     // 补齐较短的数组
@@ -268,9 +273,9 @@ async function doGenerateImage(promptText: string, clearInput = false) {
           imageTimestamps.value = imageTimestamps.value.slice(0, 20)
         }
 
-        await store.setJSON(`ai_generated_images`, generatedImages.value)
-        await store.setJSON(`ai_image_prompts`, imagePrompts.value)
-        await store.setJSON(`ai_image_timestamps`, imageTimestamps.value)
+        await store.setJSON(IMAGE_STORAGE_KEYS.images, generatedImages.value)
+        await store.setJSON(IMAGE_STORAGE_KEYS.prompts, imagePrompts.value)
+        await store.setJSON(IMAGE_STORAGE_KEYS.timestamps, imageTimestamps.value)
 
         // 清空输入框
         if (clearInput)
@@ -315,9 +320,9 @@ async function clearImages() {
   imagePrompts.value = []
   imageTimestamps.value = []
   currentImageIndex.value = 0
-  await store.remove(`ai_generated_images`)
-  await store.remove(`ai_image_prompts`)
-  await store.remove(`ai_image_timestamps`)
+  await store.remove(IMAGE_STORAGE_KEYS.images)
+  await store.remove(IMAGE_STORAGE_KEYS.prompts)
+  await store.remove(IMAGE_STORAGE_KEYS.timestamps)
 }
 
 /* ---------- 下载图像 ---------- */
