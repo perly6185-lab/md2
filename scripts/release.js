@@ -1,20 +1,21 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import packageJson from '../packages/md-cli/package.json' assert { type: 'json' };
 import child_process from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const packageJsonPath = path.resolve(__dirname, "../packages/md-cli/package.json");
 
 (async function () {
+  const packageJson = JSON.parse(await fs.readFile(packageJsonPath, "utf8"));
   const execCommand = (arr) =>
     (Array.isArray(arr) ? arr : [arr]).forEach((c) => {
       try {
         console.log(`start: ${c}...`);
         console.log(child_process.execSync(c).toString("utf8"));
       } catch (error) {
-        console.log("\x1B[31m%s\x1B[0m", error.stdout.toString());
+        console.log("\x1B[31m%s\x1B[0m", error.stdout?.toString() ?? error.message);
         process.exit(1);
       }
     });
@@ -34,7 +35,7 @@ const __dirname = path.dirname(__filename);
     version: getNewVersion(packageJson.version, process.argv[2]),
   };
   await fs.writeFile(
-    path.resolve(__dirname, "../packages/md-cli/package.json"),
+    packageJsonPath,
     JSON.stringify(Object.assign({}, packageJson, newVersionObj), null, 2) +
       "\n"
   );

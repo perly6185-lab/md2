@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance, Ref } from 'vue'
 import { defineAsyncComponent, unref } from 'vue'
 import EditorPanel from '@/components/editor/EditorPanel.vue'
 import PreviewPanel from '@/components/editor/PreviewPanel.vue'
@@ -106,6 +107,20 @@ const {
   viewMode,
 })
 
+type ResizablePanelTemplateRef = InstanceType<typeof ResizablePanel> | null
+
+function createPanelRefSetter(target: Ref<ResizablePanelTemplateRef>) {
+  return (panel: Element | ComponentPublicInstance | null) => {
+    target.value = panel as ResizablePanelTemplateRef
+  }
+}
+
+const setCssEditorPanelRef = createPanelRefSetter(cssEditorPanelRef)
+const setEditorResizablePanelRef = createPanelRefSetter(editorResizablePanelRef)
+const setPostSliderPanelRef = createPanelRefSetter(postSliderPanelRef)
+const setPreviewResizablePanelRef = createPanelRefSetter(previewResizablePanelRef)
+const setRightSliderPanelRef = createPanelRefSetter(rightSliderPanelRef)
+
 // --- 进度条 ---
 const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading) ?? false)
 </script>
@@ -124,7 +139,7 @@ const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading
       >
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel
-            ref="postSliderPanelRef"
+            :ref="setPostSliderPanelRef"
             class="post-slider-panel"
             :default-size="!isMobile && isOpenPostSlider ? 20 : 0"
             :max-size="!isMobile && isOpenPostSlider ? 30 : 0"
@@ -148,7 +163,7 @@ const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading
             <ResizablePanelGroup direction="horizontal">
               <!-- Markdown 编辑器 -->
               <ResizablePanel
-                ref="editorResizablePanelRef"
+                :ref="setEditorResizablePanelRef"
                 :order="1"
                 :default-size="viewMode === 'preview' ? 0 : viewMode === 'edit' ? 100 : 50"
                 :min-size="editorPanelConfig.min"
@@ -162,7 +177,7 @@ const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading
 
               <!-- 预览区 -->
               <ResizablePanel
-                ref="previewResizablePanelRef"
+                :ref="setPreviewResizablePanelRef"
                 :order="2"
                 :default-size="viewMode === 'edit' ? 0 : viewMode === 'preview' ? 100 : 50"
                 :min-size="previewPanelConfig.min"
@@ -181,7 +196,7 @@ const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading
               <!-- CSS 编辑器面板 -->
               <ResizableHandle v-show="!isMobile && isShowCssEditor" class="hidden md:block" />
               <ResizablePanel
-                ref="cssEditorPanelRef"
+                :ref="setCssEditorPanelRef"
                 :order="3"
                 :default-size="0"
                 :min-size="!isMobile && isShowCssEditor ? 10 : 0"
@@ -195,7 +210,7 @@ const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading
               <!-- 样式面板 -->
               <ResizableHandle v-show="!isMobile && isOpenRightSlider" class="hidden md:block right-slider-handle" />
               <ResizablePanel
-                ref="rightSliderPanelRef"
+                :ref="setRightSliderPanelRef"
                 class="right-slider-panel"
                 :order="4"
                 :default-size="0"
