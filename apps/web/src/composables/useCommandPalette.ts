@@ -5,8 +5,6 @@ import { useEditorDocumentActions } from '@/composables/useEditorDocumentActions
 import { useEditorStore } from '@/stores/editor'
 import { useUIStore } from '@/stores/ui'
 
-export type { PaletteCommand } from '@/composables/commandPaletteCommands'
-
 export function useCommandPalette() {
   const uiStore = useUIStore()
   const editorStore = useEditorStore()

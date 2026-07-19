@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PaletteCommand } from '@/composables/useCommandPalette'
+import type { PaletteCommand } from '@/composables/commandPaletteCommands'
 import { Search } from '@lucide/vue'
 import {
   Dialog,
