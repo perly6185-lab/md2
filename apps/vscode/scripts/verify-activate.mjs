@@ -8,29 +8,39 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const vscodeRoot = path.resolve(__dirname, `..`)
 
-const registered = []
+const registered = new Map()
+const markdownDocument = {
+  languageId: `markdown`,
+  fileName: `fixture.md`,
+  getText: () => `# Hello VSCode\n\n[link](https://example.com)`,
+}
+const markdownEditor = { document: markdownDocument }
+let createdPanel
 
 const vscodeMock = {
   commands: {
-    registerCommand(id, _handler) {
-      registered.push(id)
+    registerCommand(id, handler) {
+      registered.set(id, handler)
       return { dispose() {} }
     },
     executeCommand() {},
   },
   window: {
-    activeTextEditor: undefined,
+    activeTextEditor: markdownEditor,
     registerTreeDataProvider() {},
     onDidChangeActiveTextEditor() {
       return { dispose() {} }
     },
-    createWebviewPanel() {
-      return {
-        title: ``,
+    createWebviewPanel(_viewType, title) {
+      createdPanel = {
+        title,
         webview: { html: `` },
-        onDidDispose() {},
+        onDidDispose() {
+          return { dispose() {} }
+        },
         reveal() {},
       }
+      return createdPanel
     },
     showErrorMessage() {},
   },
@@ -59,6 +69,7 @@ const vscodeMock = {
 const require = createRequire(import.meta.url)
 const Module = require(`node:module`)
 const originalLoad = Module._load
+const previewRendererPath = require.resolve(path.join(vscodeRoot, `dist`, `previewRenderer.js`))
 Module._load = function (request, parent, isMain) {
   if (request === `vscode`)
     return vscodeMock
@@ -74,10 +85,29 @@ ext.activate(context)
 
 const required = [`markdown.preview`, `markdown.toggleCiteStatus`]
 for (const cmd of required) {
-  if (!registered.includes(cmd)) {
+  if (!registered.has(cmd)) {
     throw new Error(`Missing registered command: ${cmd}`)
   }
 }
 
-console.log(`✓ activate() registered ${registered.length} commands`)
+if (require.cache[previewRendererPath]) {
+  throw new Error(`previewRenderer loaded during activate(); expected lazy preview loading`)
+}
+
+registered.get(`markdown.preview`)()
+
+if (!require.cache[previewRendererPath]) {
+  throw new Error(`previewRenderer was not loaded when markdown.preview ran`)
+}
+
+if (!createdPanel?.webview.html.includes(`Hello VSCode`)) {
+  throw new Error(`markdown.preview did not render active markdown into the webview`)
+}
+
+if (!createdPanel.webview.html.includes(`--md-primary-color`)) {
+  throw new Error(`markdown.preview did not include preview CSS variables`)
+}
+
+console.log(`✓ activate() registered ${registered.size} commands`)
 console.log(`✓ markdown.preview is available`)
+console.log(`✓ markdown.preview lazy-loads renderer and writes webview HTML`)

@@ -24,6 +24,7 @@ export default function config() {
     },
     externals: {
       'vscode': `commonjs vscode`,
+      './previewRenderer': `commonjs ./previewRenderer`,
       // Shipped in runtime/node_modules for --no-dependencies vsix packaging.
       'isomorphic-dompurify': `commonjs ../runtime/node_modules/isomorphic-dompurify`,
     },

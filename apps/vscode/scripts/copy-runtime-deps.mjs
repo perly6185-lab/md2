@@ -36,8 +36,8 @@ const dompurifyVersion = resolveDompurifyVersion()
 
 const runtimePackage = {
   name: `doocs-md-runtime`,
-  private: true,
   type: `commonjs`,
+  private: true,
   dependencies: {
     'isomorphic-dompurify': dompurifyVersion,
   },
