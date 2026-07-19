@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance, Ref } from 'vue'
 import { defineAsyncComponent, unref } from 'vue'
 import EditorPanel from '@/components/editor/EditorPanel.vue'
 import PreviewPanel from '@/components/editor/PreviewPanel.vue'
@@ -12,6 +11,10 @@ import { useCursorSync } from '@/composables/useCursorSync'
 import { useEditorPanelResizing } from '@/composables/useEditorPanelResizing'
 import { useScrollSync } from '@/composables/useScrollSync'
 import { useUIStore } from '@/stores/ui'
+import {
+  createResizablePanelRefSetter,
+  useCopyFeedbackState,
+} from './useEditorShellState'
 
 const PostSlider = defineAsyncComponent(() => import('@/components/editor/post-slider/index.vue'))
 const FolderSourcePanel = defineAsyncComponent(() => import('@/components/editor/folder-source-panel/index.vue'))
@@ -59,32 +62,7 @@ const { handlePreviewContentClick } = useCursorSync(getEditorView)
 useScrollSync(getEditorView, getPreviewContainer, enableScrollSync)
 
 // --- 复制状态 ---
-const backLight = ref(false)
-const isCoping = ref(false)
-let copyEndTimer: ReturnType<typeof setTimeout> | null = null
-
-function startCopy() {
-  backLight.value = true
-  isCoping.value = true
-}
-
-function endCopy() {
-  backLight.value = false
-  if (copyEndTimer) {
-    clearTimeout(copyEndTimer)
-  }
-  copyEndTimer = setTimeout(() => {
-    isCoping.value = false
-    copyEndTimer = null
-  }, 800)
-}
-
-onUnmounted(() => {
-  if (copyEndTimer) {
-    clearTimeout(copyEndTimer)
-    copyEndTimer = null
-  }
-})
+const { backLight, isCoping, startCopy, endCopy } = useCopyFeedbackState()
 
 // --- 上传图片透传 ---
 function handleUploadImage(file: File, cb?: any, applyUrl?: boolean) {
@@ -107,19 +85,11 @@ const {
   viewMode,
 })
 
-type ResizablePanelTemplateRef = InstanceType<typeof ResizablePanel> | null
-
-function createPanelRefSetter(target: Ref<ResizablePanelTemplateRef>) {
-  return (panel: Element | ComponentPublicInstance | null) => {
-    target.value = panel as ResizablePanelTemplateRef
-  }
-}
-
-const setCssEditorPanelRef = createPanelRefSetter(cssEditorPanelRef)
-const setEditorResizablePanelRef = createPanelRefSetter(editorResizablePanelRef)
-const setPostSliderPanelRef = createPanelRefSetter(postSliderPanelRef)
-const setPreviewResizablePanelRef = createPanelRefSetter(previewResizablePanelRef)
-const setRightSliderPanelRef = createPanelRefSetter(rightSliderPanelRef)
+const setCssEditorPanelRef = createResizablePanelRefSetter(cssEditorPanelRef)
+const setEditorResizablePanelRef = createResizablePanelRefSetter(editorResizablePanelRef)
+const setPostSliderPanelRef = createResizablePanelRefSetter(postSliderPanelRef)
+const setPreviewResizablePanelRef = createResizablePanelRefSetter(previewResizablePanelRef)
+const setRightSliderPanelRef = createResizablePanelRefSetter(rightSliderPanelRef)
 
 // --- 进度条 ---
 const isImgLoading = computed(() => unref(editorPanelCompRef.value?.isImgLoading) ?? false)

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Compartment, EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
-import { history, markdownSetup, replaceDocumentWithoutHistory, resetEditorHistory, theme } from '@md/shared/editor'
+import { history, markdownSetup, theme } from '@md/shared/editor'
 import { toBase64 } from '@md/shared/utils/fileHelpers'
 import imageCompression from 'browser-image-compression'
 import { defineAsyncComponent } from 'vue'
@@ -12,9 +12,7 @@ import { useImageUploader } from '@/composables/useImageUploader'
 import { completeInitialPreviewBoot } from '@/composables/useInitialPreviewBoot'
 import { useLocalizedUploadHostOptions } from '@/composables/useLocalizedUploadHosts'
 import { useSlashCommand } from '@/composables/useSlashCommand'
-import { formatLocalDateTime } from '@/i18n/translate'
 import { jumpToAdjacentHeading } from '@/lib/markdown/headingNavigation'
-import { contentHasMath, loadMathJax, MATHJAX_READY_EVENT } from '@/lib/preview/mathjax'
 import { validateImageFile } from '@/lib/upload/validate-image'
 import { fileUpload } from '@/services/upload'
 import { store } from '@/storage'
@@ -23,6 +21,7 @@ import { usePostStore } from '@/stores/post'
 import { useRenderStore } from '@/stores/render'
 import { useThemeStore } from '@/stores/theme'
 import { useUIStore } from '@/stores/ui'
+import { useEditorDocumentOrchestration } from './useEditorDocumentOrchestration'
 
 const SidebarAIToolbar = defineAsyncComponent(() => import('@/components/ai/SidebarAIToolbar.vue'))
 
@@ -75,11 +74,22 @@ const codeMirrorView = shallowRef<EditorView | null>(null)
 const themeCompartment = new Compartment()
 const placeholderCompartment = new Compartment()
 const historyCompartment = new Compartment()
+const {
+  preloadMathJaxIfNeeded,
+  scheduleEditorDocumentCommit,
+  startDocumentOrchestration,
+} = useEditorDocumentOrchestration({
+  codeMirrorView,
+  historyCompartment,
+  posts,
+  currentPostIndex,
+  currentPost,
+  editorRefresh,
+})
 
 function editorPlaceholder() {
   return placeholder(t(`codemirror.contentPlaceholder`))
 }
-const changeTimer = ref<ReturnType<typeof setTimeout>>()
 
 const editorRef = useTemplateRef<HTMLDivElement>(`editorRef`)
 const codeMirrorWrapper = useTemplateRef<HTMLDivElement>(`codeMirrorWrapper`)
@@ -469,11 +479,7 @@ function createFormTextArea(dom: HTMLDivElement) {
       themeCompartment.of(theme(isDark.value)),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
-          clearTimeout(changeTimer.value)
-          changeTimer.value = setTimeout(() => {
-            editorRefresh()
-            commitEditorContentToPost()
-          }, 300)
+          scheduleEditorDocumentCommit()
         }
       }),
       EditorView.domEventHandlers({
@@ -493,43 +499,6 @@ function createFormTextArea(dom: HTMLDivElement) {
 }
 
 // --- Lifecycle ---
-function handleMathJaxReady() {
-  editorRefresh()
-}
-
-async function preloadMathJaxIfNeeded(content: string) {
-  if (!contentHasMath(content))
-    return
-
-  try {
-    await loadMathJax()
-  }
-  catch (error) {
-    console.error(error)
-  }
-}
-
-let postSwitchGeneration = 0
-
-function flushEditorContentToPostAtIndex(index: number) {
-  clearTimeout(changeTimer.value)
-  changeTimer.value = undefined
-  if (!codeMirrorView.value || index < 0)
-    return
-
-  const value = codeMirrorView.value.state.doc.toString()
-  const post = posts.value[index]
-  if (!post || value === post.content)
-    return
-
-  post.updateDatetime = new Date()
-  post.content = value
-}
-
-function commitEditorContentToPost() {
-  flushEditorContentToPostAtIndex(currentPostIndex.value)
-}
-
 onMounted(() => {
   const editorDom = editorRef.value
   if (editorDom == null) {
@@ -537,7 +506,7 @@ onMounted(() => {
     return
   }
 
-  window.addEventListener(MATHJAX_READY_EVENT, handleMathJaxReady)
+  startDocumentOrchestration()
 
   renderStore.initRendererInstance({
     isMacCodeBlock: themeStore.isMacCodeBlock,
@@ -549,7 +518,6 @@ onMounted(() => {
   void nextTick(async () => {
     const editorView = createFormTextArea(editorDom)
     editor.value = editorView
-    editorStore.registerContentFlush(commitEditorContentToPost)
 
     const content = posts.value[currentPostIndex.value]?.content ?? ``
     await preloadMathJaxIfNeeded(content)
@@ -579,71 +547,7 @@ watch(locale, () => {
   })
 })
 
-function syncEditorToPostContent(content: string) {
-  const view = codeMirrorView.value
-  if (!view)
-    return
-
-  const currentContent = view.state.doc.toString()
-  if (currentContent === content)
-    return
-
-  const generation = ++postSwitchGeneration
-  replaceDocumentWithoutHistory(view, content)
-  resetEditorHistory(view, historyCompartment)
-  void preloadMathJaxIfNeeded(content).then(() => {
-    if (generation !== postSwitchGeneration)
-      return
-    editorRefresh()
-  })
-}
-
-watch(currentPostIndex, (newIndex, oldIndex) => {
-  if (oldIndex !== undefined && oldIndex >= 0)
-    flushEditorContentToPostAtIndex(oldIndex)
-
-  const post = posts.value[newIndex]
-  if (!post)
-    return
-  syncEditorToPostContent(post.content)
-})
-
-/** 云端同步等外部写入 posts 时，当前文章 index 不变也需刷新编辑器 */
-watch(
-  () => currentPost.value?.content,
-  (content) => {
-    if (content == null)
-      return
-    syncEditorToPostContent(content)
-  },
-)
-
-// 历史记录的定时器
-const historyTimer = ref<ReturnType<typeof setTimeout>>()
-onMounted(() => {
-  historyTimer.value = setInterval(() => {
-    const currentPost = posts.value[currentPostIndex.value]
-
-    const pre = (currentPost.history || [])[0]?.content
-    if (pre === currentPost.content) {
-      return
-    }
-
-    currentPost.history ??= []
-    currentPost.history.unshift({
-      content: currentPost.content,
-      datetime: formatLocalDateTime(),
-    })
-
-    currentPost.history.length = Math.min(currentPost.history.length, 10)
-  }, 30 * 1000)
-})
-
 onUnmounted(() => {
-  editorStore.unregisterContentFlush()
-  window.removeEventListener(MATHJAX_READY_EVENT, handleMathJaxReady)
-  clearTimeout(historyTimer.value)
-  clearTimeout(changeTimer.value)
   document.removeEventListener(`keydown`, handleGlobalKeydown, { capture: false })
 })
 
