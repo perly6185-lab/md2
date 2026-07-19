@@ -23,11 +23,17 @@ import { Textarea } from '@/components/ui/textarea'
 import { buildAIHeaders, resolveEndpointUrl } from '@/composables/useAIFetch'
 import { prepareModalOverlayFocus } from '@/lib/a11y/dialog-focus'
 import { copyPlain } from '@/lib/browser/clipboard'
-import { store } from '@/storage'
 import useAIImageConfigStore from '@/stores/aiImageConfig'
 import { useEditorStore } from '@/stores/editor'
 import { useUIStore } from '@/stores/ui'
 import AIImageConfig from './AIImageConfig.vue'
+import {
+  clearImageHistory,
+  IMAGE_EXPIRY_MS,
+  loadValidImageHistory,
+  saveImageHistory,
+  trimImageHistory,
+} from './imageHistoryStorage'
 
 /* ---------- 组件属性 ---------- */
 const props = defineProps<{ open: boolean }>()
@@ -35,14 +41,6 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits([`update:open`])
 
 const { t } = useI18n()
-
-/** 图片链接有效期：1小时（毫秒） */
-const EXPIRY_TIME = 60 * 60 * 1000
-const IMAGE_STORAGE_KEYS = {
-  images: `ai_generated_images`,
-  prompts: `ai_image_prompts`,
-  timestamps: `ai_image_timestamps`,
-} as const
 
 /* ---------- 编辑器引用 ---------- */
 const editorStore = useEditorStore()
@@ -77,95 +75,18 @@ let timerIntervalId: ReturnType<typeof setInterval> | null = null
 const AIImageConfigStore = useAIImageConfigStore()
 const { apiKey, endpoint, model, type, size, quality, style } = storeToRefs(AIImageConfigStore)
 
-/* ---------- 过期检查函数 ---------- */
-function isImageExpired(timestamp: number): boolean {
-  return Date.now() - timestamp > EXPIRY_TIME
-}
-
 async function cleanExpiredImages() {
-  const images = await store.getJSON<string[]>(IMAGE_STORAGE_KEYS.images, [])
-  const timestamps = await store.getJSON<number[]>(IMAGE_STORAGE_KEYS.timestamps, [])
-
-  // 没有数据则无需清理
-  if (images.length === 0) {
-    return
-  }
-
-  const prompts = await store.getJSON<string[]>(IMAGE_STORAGE_KEYS.prompts, [])
-
-  // 如果没有时间戳数据，说明是旧版本，默认清除所有数据
-  if (timestamps.length === 0) {
-    generatedImages.value = []
-    imagePrompts.value = []
-    imageTimestamps.value = []
-    await store.remove(IMAGE_STORAGE_KEYS.images)
-    await store.remove(IMAGE_STORAGE_KEYS.prompts)
-    await store.remove(IMAGE_STORAGE_KEYS.timestamps)
-    return
-  }
-
-  // 过滤掉过期的图片
-  const validIndices: number[] = []
-  timestamps.forEach((timestamp: number, index: number) => {
-    if (!isImageExpired(timestamp)) {
-      validIndices.push(index)
-    }
-  })
-
-  const validImages = validIndices.map(i => images[i]).filter(Boolean)
-  const validPrompts = validIndices.map(i => prompts[i] || ``).filter((_, index) => validImages[index])
-  const validTimestamps = validIndices.map(i => timestamps[i]).filter(Boolean)
-
-  // 更新数据
-  generatedImages.value = validImages
-  imagePrompts.value = validPrompts
-  imageTimestamps.value = validTimestamps
-
-  // 如果有数据被清除，更新存储
-  if (validImages.length < images.length) {
-    if (validImages.length > 0) {
-      await store.setJSON(IMAGE_STORAGE_KEYS.images, validImages)
-      await store.setJSON(IMAGE_STORAGE_KEYS.prompts, validPrompts)
-      await store.setJSON(IMAGE_STORAGE_KEYS.timestamps, validTimestamps)
-    }
-    else {
-      await store.remove(IMAGE_STORAGE_KEYS.images)
-      await store.remove(IMAGE_STORAGE_KEYS.prompts)
-      await store.remove(IMAGE_STORAGE_KEYS.timestamps)
-    }
-  }
+  const history = await loadValidImageHistory()
+  generatedImages.value = history.images
+  imagePrompts.value = history.prompts
+  imageTimestamps.value = history.timestamps
+  currentImageIndex.value = Math.min(currentImageIndex.value, Math.max(generatedImages.value.length - 1, 0))
 }
 
 /* ---------- 初始数据 & 定时器 ---------- */
 onMounted(async () => {
   // 先进行过期检查和清理
   await cleanExpiredImages()
-
-  // 确保数组长度一致
-  const imagesLength = generatedImages.value.length
-  const promptsLength = imagePrompts.value.length
-  const timestampsLength = imageTimestamps.value.length
-
-  const maxLength = Math.max(imagesLength, promptsLength, timestampsLength)
-
-  if (imagesLength < maxLength) {
-    // 如果图片少于其他数组，说明数据不一致，清除所有数据
-    generatedImages.value = []
-    imagePrompts.value = []
-    imageTimestamps.value = []
-    await store.remove(IMAGE_STORAGE_KEYS.images)
-    await store.remove(IMAGE_STORAGE_KEYS.prompts)
-    await store.remove(IMAGE_STORAGE_KEYS.timestamps)
-  }
-  else {
-    // 补齐较短的数组
-    if (promptsLength < imagesLength) {
-      imagePrompts.value = [...imagePrompts.value, ...Array.from<string>({ length: imagesLength - promptsLength }).fill(``)]
-    }
-    if (timestampsLength < imagesLength) {
-      imageTimestamps.value = [...imageTimestamps.value, ...Array.from({ length: imagesLength - timestampsLength }, () => Date.now())]
-    }
-  }
 
   // 每秒更新当前时间（用于实时显示剩余有效期）
   // 每30秒顺带清理一次已过期的图片
@@ -266,16 +187,16 @@ async function doGenerateImage(promptText: string, clearInput = false) {
         imageTimestamps.value.unshift(currentTimestamp) // 保存生成时间戳
         currentImageIndex.value = 0
 
-        // 限制存储的图片数量，避免占用过多存储空间
-        if (generatedImages.value.length > 20) {
-          generatedImages.value = generatedImages.value.slice(0, 20)
-          imagePrompts.value = imagePrompts.value.slice(0, 20)
-          imageTimestamps.value = imageTimestamps.value.slice(0, 20)
-        }
+        const history = trimImageHistory({
+          images: generatedImages.value,
+          prompts: imagePrompts.value,
+          timestamps: imageTimestamps.value,
+        })
+        generatedImages.value = history.images
+        imagePrompts.value = history.prompts
+        imageTimestamps.value = history.timestamps
 
-        await store.setJSON(IMAGE_STORAGE_KEYS.images, generatedImages.value)
-        await store.setJSON(IMAGE_STORAGE_KEYS.prompts, imagePrompts.value)
-        await store.setJSON(IMAGE_STORAGE_KEYS.timestamps, imageTimestamps.value)
+        await saveImageHistory(history)
 
         // 清空输入框
         if (clearInput)
@@ -320,9 +241,7 @@ async function clearImages() {
   imagePrompts.value = []
   imageTimestamps.value = []
   currentImageIndex.value = 0
-  await store.remove(IMAGE_STORAGE_KEYS.images)
-  await store.remove(IMAGE_STORAGE_KEYS.prompts)
-  await store.remove(IMAGE_STORAGE_KEYS.timestamps)
+  await clearImageHistory()
 }
 
 /* ---------- 下载图像 ---------- */
@@ -463,10 +382,9 @@ function getTimeRemaining(index: number): string {
     return t(`common.unknown`)
   }
 
-  // EXPIRY_TIME 来自模块顶层常量
   const timestamp = imageTimestamps.value[index]
   const elapsed = currentTime.value - timestamp
-  const remaining = EXPIRY_TIME - elapsed
+  const remaining = IMAGE_EXPIRY_MS - elapsed
 
   if (remaining <= 0) {
     return t(`ai.image.expired`)
@@ -488,10 +406,9 @@ function getTimeRemainingClass(index: number): string {
     return `text-muted-foreground`
   }
 
-  // EXPIRY_TIME 来自模块顶层常量
   const timestamp = imageTimestamps.value[index]
   const elapsed = currentTime.value - timestamp
-  const remaining = EXPIRY_TIME - elapsed
+  const remaining = IMAGE_EXPIRY_MS - elapsed
 
   if (remaining <= 0) {
     return `text-red-500 font-medium`

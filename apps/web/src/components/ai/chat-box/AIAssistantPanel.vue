@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ChatMessage, ConversationSummary } from './chatSessionStorage'
 import type { QuickCommandRuntime } from '@/stores/quickCommands'
 import {
   Check,
@@ -32,11 +33,20 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { buildAIHeaders, resolveEndpointUrl, useAIFetch } from '@/composables/useAIFetch'
 import { copyPlain } from '@/lib/browser/clipboard'
-import { store } from '@/storage'
 import useAIConfigStore from '@/stores/aiConfig'
 import { useEditorStore } from '@/stores/editor'
 import { useQuickCommandsStore } from '@/stores/quickCommands'
 import { useUIStore } from '@/stores/ui'
+import {
+
+  loadActiveConversation,
+  loadConversationList,
+  loadConversationMessages,
+  removeConversation,
+  saveActiveConversation,
+  saveConversation,
+  saveConversationList,
+} from './chatSessionStorage'
 
 const props = defineProps<{ open: boolean }>()
 
@@ -65,21 +75,11 @@ const configVisible = ref(false)
 const { loading, abort: abortFetch, fetchSSE } = useAIFetch()
 const copiedIndex = ref<number | null>(null)
 const insertedIndex = ref<number | null>(null)
-const memoryKey = `ai_memory_context`
 const isQuoteAllContent = ref(false)
 const cmdMgrOpen = ref(false)
 
-const conversationListKey = `ai_conversation_list`
 const currentConversationId = ref<string | null>(null)
-const conversationList = ref<Array<{ id: string, name: string, timestamp: number }>>([])
-
-interface ChatMessage {
-  role: `user` | `assistant` | `system`
-  content: string
-  reasoning?: string
-  done?: boolean
-  id?: string
-}
+const conversationList = ref<ConversationSummary[]>([])
 
 const messages = ref<ChatMessage[]>([])
 const AIConfigStore = useAIConfigStore()
@@ -107,9 +107,9 @@ function applyQuickCommand(cmd: QuickCommandRuntime) {
 }
 
 onMounted(async () => {
-  conversationList.value = await store.getJSON(conversationListKey, [])
+  conversationList.value = await loadConversationList()
 
-  const saved = await store.getJSON<ChatMessage[]>(memoryKey, [])
+  const saved = await loadActiveConversation()
   messages.value = saved.length > 0
     ? saved.map((msg: ChatMessage) => ({ ...msg, id: msg.id || uuidv4() }))
     : getDefaultMessages()
@@ -146,17 +146,17 @@ async function autoSaveCurrentConversation() {
       timestamp: Date.now(),
     }
     conversationList.value.unshift(conversation)
-    await store.setJSON(conversationListKey, conversationList.value)
+    await saveConversationList(conversationList.value)
   }
   else {
     const conv = conversationList.value.find(c => c.id === currentConversationId.value)
     if (conv) {
       conv.timestamp = Date.now()
-      await store.setJSON(conversationListKey, conversationList.value)
+      await saveConversationList(conversationList.value)
     }
   }
 
-  await store.setJSON(`ai_conversation_${currentConversationId.value}`, messages.value)
+  await saveConversation(currentConversationId.value, messages.value)
 }
 
 async function createNewConversation() {
@@ -164,7 +164,7 @@ async function createNewConversation() {
 
   currentConversationId.value = null
   messages.value = getDefaultMessages()
-  await store.setJSON(memoryKey, messages.value)
+  await saveActiveConversation(messages.value)
   await scrollToBottom(true)
   toast.success(t(`ai.chat.sessionCreated`))
 }
@@ -172,14 +172,14 @@ async function createNewConversation() {
 async function loadConversation(id: string) {
   await autoSaveCurrentConversation()
 
-  const saved = await store.getJSON<ChatMessage[]>(`ai_conversation_${id}`, [])
+  const saved = await loadConversationMessages(id)
   if (saved.length > 0) {
     messages.value = saved.map(msg => ({
       ...msg,
       id: msg.id || uuidv4(),
     }))
     currentConversationId.value = id
-    await store.setJSON(memoryKey, messages.value)
+    await saveActiveConversation(messages.value)
     await scrollToBottom(true)
     toast.success(t(`ai.chat.conversationLoaded`))
   }
@@ -187,13 +187,13 @@ async function loadConversation(id: string) {
 
 async function deleteConversation(id: string) {
   conversationList.value = conversationList.value.filter(c => c.id !== id)
-  await store.setJSON(conversationListKey, conversationList.value)
-  await store.remove(`ai_conversation_${id}`)
+  await saveConversationList(conversationList.value)
+  await removeConversation(id)
 
   if (currentConversationId.value === id) {
     currentConversationId.value = null
     messages.value = getDefaultMessages()
-    await store.setJSON(memoryKey, messages.value)
+    await saveActiveConversation(messages.value)
   }
 
   toast.success(t(`ai.chat.conversationDeleted`))
@@ -264,13 +264,13 @@ async function resetMessages() {
 
   if (currentConversationId.value) {
     conversationList.value = conversationList.value.filter(c => c.id !== currentConversationId.value)
-    await store.setJSON(conversationListKey, conversationList.value)
-    await store.remove(`ai_conversation_${currentConversationId.value}`)
+    await saveConversationList(conversationList.value)
+    await removeConversation(currentConversationId.value)
     currentConversationId.value = null
   }
 
   messages.value = getDefaultMessages()
-  await store.setJSON(memoryKey, messages.value)
+  await saveActiveConversation(messages.value)
   scrollToBottom(true)
   toast.success(t(`ai.chat.sessionCleared`))
 }
@@ -399,7 +399,7 @@ async function streamResponse(replyMessageProxy: ChatMessage) {
     await scrollToBottom(true)
   }
   finally {
-    await store.setJSON(memoryKey, messages.value)
+    await saveActiveConversation(messages.value)
     await autoSaveCurrentConversation()
   }
 }
