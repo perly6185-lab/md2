@@ -1,3 +1,5 @@
+import type { Context } from 'hono'
+
 export interface Env {
   DB: D1Database
   ASSETS: Fetcher
@@ -93,3 +95,10 @@ export interface PushResponse {
   settings: SyncSetting[]
   cursor: number
 }
+
+export interface ApiVariables {
+  userId: string
+}
+
+export type ApiContext = Context<{ Bindings: Env, Variables: ApiVariables }>
+export type PublicApiContext = Context<{ Bindings: Env }>

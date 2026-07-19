@@ -1,23 +1,15 @@
-import type { Env } from './types'
+import type { ApiVariables, Env } from './types'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { activateHandler } from './activate'
-import { authMiddleware, authRoutes, meHandler } from './auth'
 import {
   API_CORS_ALLOW_HEADERS,
   API_CORS_ALLOW_METHODS,
   API_CORS_MAX_AGE_SECONDS,
   resolveCorsOrigin,
 } from './cors-config'
-import { createShareHandler, deleteShareHandler, listSharesHandler, unlockShareHandler, viewShareHandler } from './share'
-import { SHARE_FAVICON_PATH } from './share-head'
-import { pullHandler, pushHandler } from './sync'
-import { uploadHandler } from './upload'
-import { afdianWebhookHandler } from './webhook'
+import { registerAuthenticatedRoutes, registerPublicRoutes } from './routes'
 
-const API_HEALTH_RESPONSE = { name: `md-api`, ok: true }
-
-const app = new Hono<{ Bindings: Env, Variables: { userId: string } }>()
+const app = new Hono<{ Bindings: Env, Variables: ApiVariables }>()
 
 // CORS：允许 APP_URL 中配置的来源（支持通配符，逗号分隔）携带凭据访问
 app.use(`*`, async (c, next) => {
@@ -31,33 +23,7 @@ app.use(`*`, async (c, next) => {
   return handler(c, next)
 })
 
-app.get(`/`, c => c.json(API_HEALTH_RESPONSE))
-
-// 默认图床上传（公开，由 UPLOAD_ENABLED 控制）
-app.post(`/upload`, uploadHandler)
-
-app.get(SHARE_FAVICON_PATH, c => c.env.ASSETS.fetch(c.req.raw))
-
-app.route(`/auth`, authRoutes)
-// 爱发电 Webhook：无密钥与带路径密钥两种形式共用同一处理器。
-// 设置 AFDIAN_WEBHOOK_TOKEN 后，仅 `/webhooks/afdian/<token>` 可通过校验。
-app.post(`/webhooks/afdian`, afdianWebhookHandler)
-app.post(`/webhooks/afdian/:token`, afdianWebhookHandler)
-
-// 公开分享：只读 HTML 预览页 + 密码解锁
-app.get(`/s/:shareId`, viewShareHandler)
-app.post(`/s/:shareId/unlock`, unlockShareHandler)
-
-const api = new Hono<{ Bindings: Env, Variables: { userId: string } }>()
-api.use(`*`, authMiddleware)
-api.get(`/me`, meHandler)
-api.get(`/sync/pull`, pullHandler)
-api.post(`/sync/push`, pushHandler)
-api.post(`/sync/activate`, activateHandler)
-api.get(`/share`, listSharesHandler)
-api.post(`/share`, createShareHandler)
-api.delete(`/share/:id`, deleteShareHandler)
-
-app.route(`/`, api)
+registerPublicRoutes(app)
+registerAuthenticatedRoutes(app)
 
 export default app

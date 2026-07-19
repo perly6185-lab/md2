@@ -1,9 +1,8 @@
-import type { Context } from 'hono'
-import type { Env, PushRequest } from './types'
+import type { ApiContext, PushRequest } from './types'
 import { getUserById, pullChanges, pushChanges } from './db'
 import { checkSyncRateLimit, getEffectivePlan } from './plan'
 
-type SyncContext = Context<{ Bindings: Env, Variables: { userId: string } }>
+type SyncContext = ApiContext
 type SyncErrorStatus = 400 | 404 | 429
 
 function syncError(

@@ -1,6 +1,5 @@
-import type { Context } from 'hono'
 import type { UserPlan } from './plan'
-import type { Env, JwtPayload } from './types'
+import type { JwtPayload, PublicApiContext } from './types'
 import { verify } from 'hono/jwt'
 import { getUserById } from './db'
 import { getEffectivePlan } from './plan'
@@ -20,7 +19,7 @@ import {
   uploadRateLimitRetryAfterSec,
 } from './upload-rate'
 
-type UploadContext = Context<{ Bindings: Env }>
+type UploadContext = PublicApiContext
 type UploadErrorStatus = 400 | 404 | 429 | 502 | 503
 
 function uploadError(

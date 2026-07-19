@@ -1,7 +1,6 @@
-import type { Context } from 'hono'
 import type { ShareFooterAuthor } from './share-page'
 import type { CreateShareRequest, ShareExpiresMode, ShareHtmlSnapshot } from './share-types'
-import type { Env } from './types'
+import type { ApiContext, PublicApiContext } from './types'
 import { getCookie, setCookie } from 'hono/cookie'
 import { getUserById } from './db'
 import {
@@ -58,7 +57,7 @@ async function deriveShareId(userId: string, postId: string): Promise<string> {
     .slice(0, 12)
 }
 
-function getClientIp(c: Context<{ Bindings: Env }>): string {
+function getClientIp(c: PublicApiContext): string {
   return c.req.header(`CF-Connecting-IP`)
     ?? c.req.header(`X-Forwarded-For`)?.split(`,`)[0]?.trim()
     ?? `unknown`
@@ -106,22 +105,22 @@ function resolveShareExpiresAt(
   return delta == null ? null : now + delta
 }
 
-function buildShareUrl(c: Context<{ Bindings: Env, Variables: { userId: string } }>, id: string): string {
+function buildShareUrl(c: ApiContext, id: string): string {
   const url = new URL(c.req.url)
   return `${url.origin}/s/${id}`
 }
 
-function isHttps(c: Context<{ Bindings: Env }>): boolean {
+function isHttps(c: PublicApiContext): boolean {
   return new URL(c.req.url).protocol === `https:`
 }
 
-function shareHtml(c: Context<{ Bindings: Env }>, html: string, status: 200 | 404 | 410 = 200) {
+function shareHtml(c: PublicApiContext, html: string, status: 200 | 404 | 410 = 200) {
   return c.html(html, status, {
     'Content-Security-Policy': SHARE_PAGE_CSP,
   })
 }
 
-function wantsJsonResponse(c: Context<{ Bindings: Env }>): boolean {
+function wantsJsonResponse(c: PublicApiContext): boolean {
   return (c.req.header(`accept`) ?? ``).includes(`application/json`)
     || (c.req.header(`content-type`) ?? ``).includes(`application/json`)
 }
@@ -149,7 +148,7 @@ async function resolveSharePassword(
 }
 
 async function hasShareAccess(
-  c: Context<{ Bindings: Env }>,
+  c: PublicApiContext,
   shareId: string,
 ): Promise<boolean> {
   const token = getCookie(c, shareAccessCookieName(shareId))
@@ -159,7 +158,7 @@ async function hasShareAccess(
 }
 
 function setShareAccessCookie(
-  c: Context<{ Bindings: Env }>,
+  c: PublicApiContext,
   shareId: string,
   token: string,
   shareExpiresAt: number | null,
@@ -181,7 +180,7 @@ function setShareAccessCookie(
   })
 }
 
-async function parseUnlockPassword(c: Context<{ Bindings: Env }>): Promise<string> {
+async function parseUnlockPassword(c: PublicApiContext): Promise<string> {
   const contentType = c.req.header(`content-type`) ?? ``
   if (contentType.includes(`application/json`)) {
     try {
@@ -208,7 +207,7 @@ const SHARE_ID_RE = /^[a-f0-9]{12}$/i
 type ShareManageAccess = { ok: true } | { ok: false, error: `not_found` | `pro_required` }
 
 async function requireProForShareManage(
-  c: Context<{ Bindings: Env, Variables: { userId: string } }>,
+  c: ApiContext,
 ): Promise<ShareManageAccess> {
   const user = await getUserById(c.env.DB, c.get(`userId`))
   if (!user)
@@ -221,7 +220,7 @@ async function requireProForShareManage(
   return { ok: true }
 }
 
-export async function listSharesHandler(c: Context<{ Bindings: Env, Variables: { userId: string } }>) {
+export async function listSharesHandler(c: ApiContext) {
   const access = await requireProForShareManage(c)
   if (!access.ok)
     return c.json({ error: access.error }, access.error === `pro_required` ? 403 : 404)
@@ -245,7 +244,7 @@ export async function listSharesHandler(c: Context<{ Bindings: Env, Variables: {
   })
 }
 
-export async function deleteShareHandler(c: Context<{ Bindings: Env, Variables: { userId: string } }>) {
+export async function deleteShareHandler(c: ApiContext) {
   const access = await requireProForShareManage(c)
   if (!access.ok)
     return c.json({ error: access.error }, access.error === `pro_required` ? 403 : 404)
@@ -262,7 +261,7 @@ export async function deleteShareHandler(c: Context<{ Bindings: Env, Variables: 
   return c.json({ ok: true })
 }
 
-export async function createShareHandler(c: Context<{ Bindings: Env, Variables: { userId: string } }>) {
+export async function createShareHandler(c: ApiContext) {
   let body: CreateShareRequest
   try {
     body = await c.req.json<CreateShareRequest>()
@@ -370,7 +369,7 @@ async function resolveShareAuthor(db: D1Database, userId: string): Promise<Share
   }
 }
 
-export async function viewShareHandler(c: Context<{ Bindings: Env }>) {
+export async function viewShareHandler(c: PublicApiContext) {
   const id = c.req.param(`shareId`)
   if (!id || !SHARE_ID_RE.test(id))
     return c.text(`Not Found`, 404)
@@ -400,7 +399,7 @@ export async function viewShareHandler(c: Context<{ Bindings: Env }>) {
   return shareHtml(c, injectShareFooter(share.html, author, viewCount))
 }
 
-export async function unlockShareHandler(c: Context<{ Bindings: Env }>) {
+export async function unlockShareHandler(c: PublicApiContext) {
   const id = c.req.param(`shareId`)
   if (!id || !/^[a-f0-9]{12}$/i.test(id))
     return c.text(`Not Found`, 404)
