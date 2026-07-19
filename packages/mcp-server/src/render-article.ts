@@ -1,5 +1,7 @@
+import type { CSSVariableConfig } from '@md/core/theme/cssVariables'
 import type { ThemeName } from '@md/shared/configs'
 import type { HeadingStyles } from '@md/shared/configs/style'
+import type { IOpts } from '@md/shared/types'
 import type { HeadingStylesInput, LegendValue } from './config-options'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -147,23 +149,19 @@ function resolveRenderOptions(input: RenderMarkdownInput): ResolvedRenderOptions
   }
 }
 
-export async function buildRenderedOutput(input: RenderMarkdownInput) {
-  const options = resolveRenderOptions(input)
-
-  const renderer = initRenderer({
+function buildCoreRendererOptions(options: ResolvedRenderOptions): IOpts {
+  return {
     isMacCodeBlock: options.isMacCodeBlock,
     isShowLineNumber: options.isShowLineNumber,
     citeStatus: options.citeStatus,
     countStatus: options.countStatus,
     themeMode: options.themeMode,
     legend: options.legend,
-  })
+  }
+}
 
-  const { html: baseHtml, readingTime } = renderMarkdown(input.markdown, renderer)
-  const processedHtml = postProcessHtml(baseHtml, readingTime, renderer)
-  const { yamlData } = renderer.parseFrontMatterAndContent(input.markdown)
-
-  const cssConfig = {
+function buildCSSConfig(options: ResolvedRenderOptions): CSSVariableConfig {
+  return {
     primaryColor: options.primaryColor,
     fontFamily: options.fontFamily,
     fontSize: options.fontSize,
@@ -171,7 +169,18 @@ export async function buildRenderedOutput(input: RenderMarkdownInput) {
     isUseJustify: options.isUseJustify,
     headingStyles: options.headingStyles,
   }
+}
 
+export async function buildRenderedOutput(input: RenderMarkdownInput) {
+  const options = resolveRenderOptions(input)
+
+  const renderer = initRenderer(buildCoreRendererOptions(options))
+
+  const { html: baseHtml, readingTime } = renderMarkdown(input.markdown, renderer)
+  const processedHtml = postProcessHtml(baseHtml, readingTime, renderer)
+  const { yamlData } = renderer.parseFrontMatterAndContent(input.markdown)
+
+  const cssConfig = buildCSSConfig(options)
   const variablesCSS = generateCSSVariables(cssConfig)
   const headingStylesCSS = generateHeadingStyles(cssConfig)
   const themeCSS = resolveThemeCSS(options.theme)
