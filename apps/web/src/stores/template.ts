@@ -1,8 +1,8 @@
 import type { CreateTemplateParams, Template, UpdateTemplateParams } from '@md/shared'
 import { v4 as uuidv4 } from 'uuid'
 import { t } from '@/i18n/translate'
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
+import { persistedRef } from '@/stores/persistence'
 
 /**
  * 模板管理 Store
@@ -10,8 +10,8 @@ import { addPrefix } from '@/storage/prefix'
  */
 export const useTemplateStore = defineStore(`template`, () => {
   // ==================== 状态 ====================
-  // 模板列表 - 使用响应式存储，自动持久化到 localStorage
-  const templates = store.reactive<Template[]>(addPrefix(`templates`), [])
+  // 模板列表 - 使用响应式存储，自动持久化到应用存储
+  const templates = persistedRef<Template[]>(addPrefix(`templates`), [])
 
   // ==================== 计算属性 ====================
   // 按创建时间倒序排列的模板列表

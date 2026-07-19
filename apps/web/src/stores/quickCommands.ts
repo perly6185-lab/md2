@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { ref, watch } from 'vue'
 import { t } from '@/i18n/translate'
-import { store } from '@/storage'
+import { persistedGetJson, persistedSetJson } from '@/stores/persistence'
 
 export interface QuickCommandPersisted {
   id: string
@@ -42,11 +42,11 @@ export const useQuickCommandsStore = defineStore(`quickCommands`, () => {
     const toSave: QuickCommandPersisted[] = commands.value.map(
       ({ id, label, template }) => ({ id, label, template }),
     )
-    await store.setJSON(STORAGE_KEY, toSave)
+    await persistedSetJson(STORAGE_KEY, toSave)
   }
 
   async function reloadFromStorage() {
-    const parsed = await store.getJSON<QuickCommandPersisted[]>(STORAGE_KEY)
+    const parsed = await persistedGetJson<QuickCommandPersisted[]>(STORAGE_KEY)
 
     if (parsed && Array.isArray(parsed)) {
       try {

@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { t } from '@/i18n/translate'
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
+import { persistedRef } from '@/stores/persistence'
 
 export interface MpAccount {
   /** UUID — internal store identifier */
@@ -25,8 +25,8 @@ export interface MpAccount {
 }
 
 export const useMpAccountsStore = defineStore(`mpAccounts`, () => {
-  const accounts = store.reactive<MpAccount[]>(addPrefix(`mp-accounts`), [])
-  const currentAccountId = store.reactive<string>(addPrefix(`mp-current-account-id`), ``)
+  const accounts = persistedRef<MpAccount[]>(addPrefix(`mp-accounts`), [])
+  const currentAccountId = persistedRef<string>(addPrefix(`mp-current-account-id`), ``)
 
   const currentAccount = computed<MpAccount | null>(() => {
     return (

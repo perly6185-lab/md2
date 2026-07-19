@@ -6,8 +6,8 @@ import { sanitizeTitle } from '@md/shared/utils/basicHelpers'
 import { downloadFile } from '@md/shared/utils/fileHelpers'
 import { v4 as uuidv4 } from 'uuid'
 import { t } from '@/i18n/translate'
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
+import { persistedRef } from '@/stores/persistence'
 
 const DEFAULT_CSS_CONTENT = DEFAULT_CUSTOM_THEME
 
@@ -40,7 +40,7 @@ export const useCssEditorStore = defineStore(`cssEditor`, () => {
   const cssEditorThemeCompartment = ref<Compartment | null>(null)
 
   // CSS 内容配置
-  const cssContentConfig = store.reactive<CssContentConfig>(addPrefix(`css_content_config`), {
+  const cssContentConfig = persistedRef<CssContentConfig>(addPrefix(`css_content_config`), {
     active: ``,
     tabs: [],
   })

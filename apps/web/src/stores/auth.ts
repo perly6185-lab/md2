@@ -9,14 +9,14 @@ import {
 } from '@/services/account/extension'
 import { ACCOUNT_TOKEN_KEY, captureOAuthToken } from '@/services/account/oauth'
 import { SyncClient } from '@/services/sync/client'
-import { store } from '@/storage'
+import { persistedRef, persistedRemove, persistedSet } from '@/stores/persistence'
 
 /**
  * 全局账户 Store
  * 负责登录态、JWT、用户信息；云同步等云端能力共用同一账户
  */
 export const useAuthStore = defineStore(`auth`, () => {
-  const token = store.reactive(ACCOUNT_TOKEN_KEY, ``)
+  const token = persistedRef(ACCOUNT_TOKEN_KEY, ``)
   const user = ref<AccountUser | null>(null)
   let bootstrapped = false
 
@@ -74,7 +74,7 @@ export const useAuthStore = defineStore(`auth`, () => {
       }
 
       token.value = result.token
-      await store.set(ACCOUNT_TOKEN_KEY, result.token)
+      await persistedSet(ACCOUNT_TOKEN_KEY, result.token)
 
       const ok = await fetchMe()
       if (!ok) {
@@ -90,7 +90,7 @@ export const useAuthStore = defineStore(`auth`, () => {
   function logout(): void {
     token.value = ``
     user.value = null
-    store.remove(ACCOUNT_TOKEN_KEY).catch(() => {})
+    persistedRemove(ACCOUNT_TOKEN_KEY).catch(() => {})
   }
 
   return {

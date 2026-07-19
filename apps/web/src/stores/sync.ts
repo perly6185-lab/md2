@@ -6,10 +6,10 @@ import { hydrateSyncedSettings } from '@/services/sync/hydrate'
 import { mergeRemoteIntoLocal, postToDoc, toMs } from '@/services/sync/merge'
 import { isProPlan, SYNC_DEBOUNCE_MS_PRO, SYNC_PRO_ENABLED } from '@/services/sync/plan'
 import { applyRemoteSettings, collectChangedSettings } from '@/services/sync/settings'
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
 import { safeGetItem, safeRemoveItem, safeSetItem } from '@/storage/safe-access'
 import { useAuthStore } from '@/stores/auth'
+import { persistedRef } from '@/stores/persistence'
 import { usePostStore } from '@/stores/post'
 
 export type SyncStatus = 'idle' | 'syncing' | 'error'
@@ -42,8 +42,8 @@ export const useSyncStore = defineStore(`sync`, () => {
 
   const status = ref<SyncStatus>(`idle`)
   const lastError = ref<string>(``)
-  const lastSyncAt = store.reactive<number>(addPrefix(`sync_last_at`), 0)
-  const autoSyncEnabled = store.reactive(addPrefix(`sync_auto`), false)
+  const lastSyncAt = persistedRef<number>(addPrefix(`sync_last_at`), 0)
+  const autoSyncEnabled = persistedRef(addPrefix(`sync_auto`), false)
 
   let cursor = 0
   let debounceTimer: ReturnType<typeof setTimeout> | null = null

@@ -2,8 +2,8 @@ import type { ComponentRegistry, CreateComponentParams, CustomComponentDef, Upda
 import { BUILT_IN_COMPONENTS, getBuiltInRegistry } from '@md/core'
 import { v4 as uuidv4 } from 'uuid'
 import { t } from '@/i18n/translate'
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
+import { persistedRef } from '@/stores/persistence'
 
 /**
  * 自定义组件管理 Store
@@ -11,14 +11,14 @@ import { addPrefix } from '@/storage/prefix'
  * 用户可定义 JSX 风格的组件，在 Markdown 中使用：
  *   <QRCodeBlock url="https://example.com" text="扫码访问" />
  *
- * 内置组件随系统提供，用户组件持久化到 localStorage。
+ * 内置组件随系统提供，用户组件持久化到应用存储。
  * 合并后的注册表传递给渲染器使用。
  */
 export const useCustomComponentStore = defineStore(`customComponent`, () => {
   // ==================== 状态 ====================
 
   /** 用户自定义组件列表（持久化） */
-  const userComponents = store.reactive<CustomComponentDef[]>(addPrefix(`custom_components`), [])
+  const userComponents = persistedRef<CustomComponentDef[]>(addPrefix(`custom_components`), [])
 
   // ==================== 计算属性 ====================
 

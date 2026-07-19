@@ -4,7 +4,7 @@ import { detectInitialLocale } from '@/i18n/detect'
 import { getAppI18n } from '@/i18n/index'
 import enUS from '@/i18n/messages/en-US'
 import zhCN from '@/i18n/messages/zh-CN'
-import { store } from '@/storage'
+import { persistedRef, syncBootStorageValue } from '@/stores/persistence'
 
 const META_BY_LOCALE = {
   'zh-CN': zhCN.meta,
@@ -24,12 +24,7 @@ function syncDocumentLocale(locale: AppLocale) {
 
 /** 供 index.html 启动屏在 IndexedDB 就绪前同步读取 */
 function syncLocaleBootCache(locale: AppLocale) {
-  try {
-    localStorage.setItem(LOCALE_STORAGE_KEY, locale)
-  }
-  catch {
-    // ignore quota / private mode
-  }
+  syncBootStorageValue(LOCALE_STORAGE_KEY, locale)
 }
 
 function setI18nLocale(value: AppLocale) {
@@ -41,7 +36,7 @@ function setI18nLocale(value: AppLocale) {
 }
 
 export const useLocaleStore = defineStore(`locale`, () => {
-  const locale = store.reactive<AppLocale>(LOCALE_STORAGE_KEY, detectInitialLocale())
+  const locale = persistedRef<AppLocale>(LOCALE_STORAGE_KEY, detectInitialLocale())
 
   watch(
     locale,

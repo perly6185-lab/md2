@@ -3,9 +3,10 @@ import { debounce } from 'es-toolkit'
 import { v4 as uuidv4 } from 'uuid'
 import DEFAULT_CONTENT from '@/assets/example/markdown.md?raw'
 import { formatLocalDateTime, t } from '@/i18n/translate'
-import { documentRepo, getLoadedDocuments, store } from '@/storage'
+import { documentRepo, getLoadedDocuments } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
 import { useEditorStore } from '@/stores/editor'
+import { persistedRef } from '@/stores/persistence'
 
 export type { Post } from '@/types/post'
 
@@ -49,8 +50,8 @@ export const usePostStore = defineStore(`post`, () => {
     loaded?.length ? normalizePosts(loaded) : [createDefaultPost()],
   )
 
-  const currentPostId = store.reactive(addPrefix(`current_post_id`), ``)
-  const sortMode = store.reactive(addPrefix(`sort_mode`), `create-old-new`)
+  const currentPostId = persistedRef(addPrefix(`current_post_id`), ``)
+  const sortMode = persistedRef(addPrefix(`sort_mode`), `create-old-new`)
 
   let persistReady = false
 

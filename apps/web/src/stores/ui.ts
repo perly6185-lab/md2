@@ -1,5 +1,5 @@
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
+import { persistedRef } from '@/stores/persistence'
 
 export type EditorViewMode = 'edit' | 'split' | 'preview'
 export type PreviewDevice = 'desktop' | 'mobile'
@@ -15,33 +15,33 @@ export const useUIStore = defineStore(`ui`, () => {
   const toggleDark = useToggle(isDark)
 
   // 是否开启 AI 工具箱
-  const showAIToolbox = store.reactive(`showAIToolbox`, true)
+  const showAIToolbox = persistedRef(`showAIToolbox`, true)
   const toggleAIToolbox = useToggle(showAIToolbox)
 
   // 是否已经显示过 AI 工具箱选中文本提示
-  const hasShownAIToolboxHint = store.reactive(`hasShownAIToolboxHint`, false)
+  const hasShownAIToolboxHint = persistedRef(`hasShownAIToolboxHint`, false)
 
   // 是否打开右侧滑块
-  const isOpenRightSlider = store.reactive(addPrefix(`is_open_right_slider`), false)
+  const isOpenRightSlider = persistedRef(addPrefix(`is_open_right_slider`), false)
 
   // 是否打开文章列表滑块
-  const isOpenPostSlider = store.reactive(addPrefix(`is_open_post_slider`), false)
+  const isOpenPostSlider = persistedRef(addPrefix(`is_open_post_slider`), false)
 
   // 是否打开本地文件夹面板
-  const isOpenFolderPanel = store.reactive(addPrefix(`is_open_folder_panel`), false)
+  const isOpenFolderPanel = persistedRef(addPrefix(`is_open_folder_panel`), false)
 
   // 是否为移动端
-  const isMobile = store.reactive(`isMobile`, false)
+  const isMobile = persistedRef(`isMobile`, false)
 
   // 视图模式：edit（纯编辑）| split（双屏）| preview（纯预览）
-  const viewMode = store.reactive<EditorViewMode>(`viewMode`, `split`)
+  const viewMode = persistedRef<EditorViewMode>(`viewMode`, `split`)
 
   function setViewMode(mode: EditorViewMode) {
     viewMode.value = mode
   }
 
   // 预览设备：desktop（电脑端）| mobile（移动端模拟）
-  const previewDevice = store.reactive<PreviewDevice>(`previewDevice`, `mobile`)
+  const previewDevice = persistedRef<PreviewDevice>(`previewDevice`, `mobile`)
 
   function setPreviewDevice(device: PreviewDevice) {
     previewDevice.value = device
@@ -52,19 +52,19 @@ export const useUIStore = defineStore(`ui`, () => {
   }
 
   // 是否启用图片转存（默认关闭）
-  const enableImageReupload = store.reactive(addPrefix(`enableImageReupload`), false)
+  const enableImageReupload = persistedRef(addPrefix(`enableImageReupload`), false)
   const toggleImageReupload = useToggle(enableImageReupload)
 
   // 是否开启同步滚动（编辑器与预览区联动）
-  const enableScrollSync = store.reactive(addPrefix(`enableScrollSync`), true)
+  const enableScrollSync = persistedRef(addPrefix(`enableScrollSync`), true)
   const toggleScrollSync = useToggle(enableScrollSync)
 
   // 复制到公众号时的格式模式
-  const copyMode = store.reactive(addPrefix(`copyMode`), `txt`)
+  const copyMode = persistedRef(addPrefix(`copyMode`), `txt`)
 
   // ==================== 对话框状态 ====================
   // 是否展示 CSS 编辑器
-  const isShowCssEditor = store.reactive(`isShowCssEditor`, false)
+  const isShowCssEditor = persistedRef(`isShowCssEditor`, false)
   const toggleShowCssEditor = useToggle(isShowCssEditor)
 
   // 是否展示插入表格对话框

@@ -1,9 +1,9 @@
 import type { HeadingLevel, HeadingStyles, HeadingStyleType, PerThemeSettings, PerThemeSettingsMap, ThemeName } from '@md/shared/configs'
 import { applyTheme } from '@md/core'
 import { defaultPerThemeSettings, defaultStyleConfig, widthOptions } from '@md/shared/configs'
-import { store } from '@/storage'
 import { addPrefix } from '@/storage/prefix'
 import { useCssEditorStore } from '@/stores/cssEditor'
+import { persistedRef } from '@/stores/persistence'
 
 /**
  * 主题和样式配置 Store
@@ -13,9 +13,9 @@ import { useCssEditorStore } from '@/stores/cssEditor'
  * headingStyles、isShowLineNumber、isMacCodeBlock），切换主题时自动加载对应配置。
  */
 export const useThemeStore = defineStore(`theme`, () => {
-  const theme = store.reactive<ThemeName>(addPrefix(`theme`), defaultStyleConfig.theme)
+  const theme = persistedRef<ThemeName>(addPrefix(`theme`), defaultStyleConfig.theme)
 
-  const themeSettings = store.reactive<PerThemeSettingsMap>(
+  const themeSettings = persistedRef<PerThemeSettingsMap>(
     addPrefix(`themeSettings`),
     {},
   )
@@ -68,12 +68,12 @@ export const useThemeStore = defineStore(`theme`, () => {
     }
   }
 
-  const isCiteStatus = store.reactive(`isCiteStatus`, defaultStyleConfig.isCiteStatus)
-  const isCountStatus = store.reactive(`isCountStatus`, defaultStyleConfig.isCountStatus)
-  const isUseIndent = store.reactive(addPrefix(`use_indent`), false)
-  const isUseJustify = store.reactive(addPrefix(`use_justify`), false)
-  const legend = store.reactive(`legend`, defaultStyleConfig.legend)
-  const previewWidth = store.reactive(`previewWidth`, widthOptions[0].value)
+  const isCiteStatus = persistedRef(`isCiteStatus`, defaultStyleConfig.isCiteStatus)
+  const isCountStatus = persistedRef(`isCountStatus`, defaultStyleConfig.isCountStatus)
+  const isUseIndent = persistedRef(addPrefix(`use_indent`), false)
+  const isUseJustify = persistedRef(addPrefix(`use_justify`), false)
+  const legend = persistedRef(`legend`, defaultStyleConfig.legend)
+  const previewWidth = persistedRef(`previewWidth`, widthOptions[0].value)
 
   const fontSizeNumber = computed(() => Number(fontSize.value.replace(`px`, ``)))
 
