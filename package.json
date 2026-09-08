@@ -36,18 +36,18 @@
     "link-claude-skills": "node ./scripts/link-claude-skills.mjs"
   },
   "dependencies": {
-    "@codemirror/state": "6.7.0",
-    "@codemirror/view": "6.43.4"
+    "@codemirror/state": "6.7.4",
+    "@codemirror/view": "6.43.11"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "9.1.0",
-    "@types/node": "^26.0.1",
+    "@antfu/eslint-config": "9.5.1",
+    "@types/node": "^26.4.1",
     "archiver": "^8.0.0",
-    "eslint": "^10.6.0",
+    "eslint": "^10.10.0",
     "eslint-plugin-format": "^2.0.1",
     "prettier": "2.8.8",
     "shx": "^0.4.0",
-    "simple-git-hooks": "^2.13.1",
+    "simple-git-hooks": "^2.14.0",
     "typescript": "~6.0.3"
   },
   "simple-git-hooks": {
